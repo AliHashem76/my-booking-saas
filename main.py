@@ -84,7 +84,11 @@ class BookingCreate(BaseModel):
     business_id: int; service_id: int; customer_name: str; customer_phone: str; booking_date: str; booking_time: str
 
 def get_db():
-    db = SessionLocal(); try: yield db; finally: db.close()
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 # ==========================================
 # 4. الروابط (APIs)
