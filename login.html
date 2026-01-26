@@ -2,35 +2,61 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>تسجيل الدخول</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الدخول - نظام الحجوزات</title>
     <style>
-        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background: #eee; }
-        .card { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); width: 300px; text-align: center; }
-        input { width: 90%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px; }
-        button { width: 100%; padding: 10px; background: #27ae60; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .login-card { background: white; padding: 40px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); width: 100%; max-width: 350px; text-align: center; }
+        h2 { color: #333; margin-bottom: 25px; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+        button { width: 100%; padding: 12px; background: #4a90e2; color: white; border: none; border-radius: 8px; font-size: 18px; cursor: pointer; transition: 0.3s; margin-top: 15px; }
+        button:hover { background: #357abd; }
+        .error-msg { color: red; font-size: 14px; margin-top: 10px; display: none; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h2>دخول الإدارة</h2>
-        <input type="text" id="phone" placeholder="رقم الهاتف">
+    <div class="login-card">
+        <h2>دخول المدير</h2>
+        <input type="text" id="phone" placeholder="رقم الهاتف (961...)">
         <input type="password" id="pass" placeholder="كلمة المرور">
-        <button onclick="doLogin()">دخول</button>
+        <div id="error" class="error-msg">خطأ في البيانات، حاول مجدداً</div>
+        <button onclick="doLogin()">تسجيل الدخول</button>
     </div>
 
     <script>
         async function doLogin() {
-            const res = await fetch('/login', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ phone: document.getElementById('phone').value, password: document.getElementById('pass').value })
-            });
-            if (res.ok) {
-                const data = await res.json();
-                localStorage.setItem('business_id', data.business_id);
-                localStorage.setItem('business_name', data.business_name);
-                setTimeout(() => { window.location.href = '/admin'; }, 200);
-            } else { alert("خطأ في البيانات"); }
+            const btn = document.querySelector('button');
+            btn.innerText = "جاري التحقق...";
+            
+            try {
+                const res = await fetch('/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ 
+                        phone: document.getElementById('phone').value, 
+                        password: document.getElementById('pass').value 
+                    })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    // التخزين الإجباري
+                    localStorage.clear();
+                    localStorage.setItem('business_id', String(data.business_id));
+                    localStorage.setItem('business_name', data.business_name);
+                    
+                    // تأكيد الحفظ قبل الانتقال
+                    if(localStorage.getItem('business_id')) {
+                        window.location.replace('/admin');
+                    }
+                } else {
+                    document.getElementById('error').style.display = 'block';
+                    btn.innerText = "تسجيل الدخول";
+                }
+            } catch (err) {
+                alert("تعذر الاتصال بالسيرفر");
+                btn.innerText = "تسجيل الدخول";
+            }
         }
     </script>
 </body>
