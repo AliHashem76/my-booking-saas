@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, Date, Time, Float
 from sqlalchemy.orm import sessionmaker, Session, declarative_base
 
-# إعدادات قاعدة البيانات (PostgreSQL)
+# إعدادات قاعدة البيانات السحابية
 DATABASE_URL = os.environ.get("DATABASE_URL")
 if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
@@ -47,7 +47,7 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-# دالة الواتساب
+# دالة إرسال واتساب (UltraMsg)
 def send_whatsapp(mobile, message):
     INSTANCE_ID = "instance160055" 
     TOKEN = "zhuhv62xrig7fziq"
@@ -61,10 +61,12 @@ def get_db():
     try: yield db
     finally: db.close()
 
+# النماذج
 class LoginReq(BaseModel): phone: str; password: str
 class ServiceReq(BaseModel): business_id: int; name: str; duration: int; price: float
 class BookingReq(BaseModel): business_id: int; service_id: int; customer_name: str; customer_phone: str; booking_date: str; booking_time: str
 
+# الروابط
 @app.post("/login")
 def login(req: LoginReq, db: Session = Depends(get_db)):
     b = db.query(Business).filter(Business.owner_phone == req.phone, Business.password == req.password).first()
@@ -76,14 +78,27 @@ def add_service(req: ServiceReq, db: Session = Depends(get_db)):
     s = Service(business_id=req.business_id, name=req.name, duration=req.duration, price=req.price)
     db.add(s); db.commit(); return {"status": "success"}
 
+@app.delete("/services/{service_id}")
+def delete_service(service_id: int, db: Session = Depends(get_db)):
+    s = db.query(Service).filter(Service.id == service_id).first()
+    if s: db.delete(s); db.commit()
+    return {"status": "success"}
+
 @app.get("/business/{bid}/services")
 def get_services(bid: int, db: Session = Depends(get_db)):
     return db.query(Service).filter(Service.business_id == bid).all()
 
+@app.get("/shop/{slug}/services")
+def get_shop_services(slug: str, db: Session = Depends(get_db)):
+    bus = db.query(Business).filter(Business.slug == slug).first()
+    if not bus: raise HTTPException(404)
+    services = db.query(Service).filter(Service.business_id == bus.id).all()
+    return {"shop_name": bus.name, "services": services, "business_id": bus.id}
+
 @app.get("/business/{bid}/bookings")
 def get_bookings(bid: int, db: Session = Depends(get_db)):
     res = db.query(Booking, Service).join(Service).filter(Booking.business_id == bid).all()
-    return [{"id":b.id, "customer_name":b.customer_name, "customer_phone": b.customer_phone, "service_name":s.name, "booking_date":str(b.booking_date), "booking_time":str(b.booking_time), "status":b.status} for b,s in res]
+    return [{"id":b.id, "customer_name":b.customer_name, "customer_phone": b.customer_phone, "service_name":s.name, "booking_date":str(b.booking_date), "booking_time":str(b.booking_time)} for b,s in res]
 
 @app.post("/book-appointment/")
 def book(req: BookingReq, db: Session = Depends(get_db)):

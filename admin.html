@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة التحكم - الإدارة</title>
+    <title>لوحة تحكم Ali Salon</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); margin: 0; padding: 20px; color: #444; min-height: 100vh; }
         .container { max-width: 900px; margin: auto; }
@@ -15,100 +15,78 @@
         button { padding: 12px 25px; border-radius: 10px; cursor: pointer; font-weight: bold; border: none; transition: 0.3s; }
         .btn-add { background: #5f27cd; color: white; }
         .btn-logout { background: #ee5253; color: white; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; border-radius: 10px; overflow: hidden; }
-        th { background: #f1f2f6; color: #5f27cd; padding: 15px; }
+        .btn-del { background: #ff4757; color: white; padding: 5px 12px; font-size: 13px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th { background: #f1f2f6; color: #5f27cd; padding: 15px; text-align: center; }
         td { padding: 15px; border-bottom: 1px solid #f1f2f6; text-align: center; background: white; }
-        .lang-btn { background: #fff; color: #5f27cd; border: 1px solid #5f27cd; margin-left: 10px; }
     </style>
 </head>
 <body>
-
 <div class="container">
     <div class="card header">
-        <h2 id="nameTag" style="margin:0;">لوحة التحكم</h2>
+        <h2 id="nameTag">لوحة التحكم</h2>
         <div>
-            <button class="lang-btn" onclick="toggleLang()" id="lBtn">English</button>
             <button class="btn-logout" onclick="logout()">خروج</button>
         </div>
     </div>
-
     <div class="card">
-        <h3 id="t-add">➕ إضافة خدمة</h3>
+        <h3>➕ إضافة خدمة</h3>
         <div class="form-group">
             <input type="text" id="sName" placeholder="اسم الخدمة">
             <input type="number" id="sPrice" placeholder="السعر ($)">
             <input type="number" id="sDur" placeholder="المدة (دقيقة)">
-            <button class="btn-add" onclick="addS()" id="t-save">حفظ</button>
+            <button class="btn-add" onclick="addS()">حفظ</button>
         </div>
     </div>
-
     <div class="card">
-        <h3 id="t-list">📋 الخدمات الحالية</h3>
+        <h3>📋 الخدمات الحالية</h3>
         <table>
-            <thead><tr><th id="th-n">الخدمة</th><th id="th-p">السعر</th><th id="th-d">المدة</th></tr></thead>
+            <thead><tr><th>الخدمة</th><th>السعر</th><th>المدة</th><th>إجراء</th></tr></thead>
             <tbody id="sTableBody"></tbody>
         </table>
     </div>
-
     <div class="card">
-        <h3 id="t-book">📅 الحجوزات</h3>
-        <table>
-            <thead><tr><th id="th-c">الزبون</th><th id="th-s">الخدمة</th><th id="th-dt">الموعد</th></tr></thead>
+        <h3>📅 الحجوزات</h3>
+        <table id="bTable">
+            <thead><tr><th>الزبون</th><th>الخدمة</th><th>الموعد</th></tr></thead>
             <tbody id="bTableBody"></tbody>
         </table>
     </div>
 </div>
-
 <script>
     const bid = localStorage.getItem('business_id');
-    if (!bid) { window.location.replace('/login'); }
+    if (!bid) window.location.replace('/login');
     document.getElementById('nameTag').innerText = localStorage.getItem('business_name');
 
-    let curLang = 'ar';
-    function toggleLang() {
-        curLang = curLang === 'ar' ? 'en' : 'ar';
-        const t = {
-            ar: { add: "➕ إضافة خدمة", save: "حفظ", list: "📋 الخدمات الحالية", book: "📅 الحجوزات", n: "الخدمة", p: "السعر", d: "المدة", c: "الزبون", s: "الخدمة", dt: "الموعد", btn: "English" },
-            en: { add: "➕ Add Service", save: "Save", list: "📋 Service List", book: "📅 Bookings", n: "Service", p: "Price", d: "Duration", c: "Customer", s: "Service", dt: "DateTime", btn: "العربية" }
-        };
-        const active = t[curLang];
-        document.getElementById('t-add').innerText = active.add;
-        document.getElementById('t-save').innerText = active.save;
-        document.getElementById('t-list').innerText = active.list;
-        document.getElementById('t-book').innerText = active.book;
-        document.getElementById('th-n').innerText = active.n;
-        document.getElementById('th-p').innerText = active.p;
-        document.getElementById('th-d').innerText = active.d;
-        document.getElementById('th-c').innerText = active.c;
-        document.getElementById('th-s').innerText = active.s;
-        document.getElementById('th-dt').innerText = active.dt;
-        document.getElementById('lBtn').innerText = active.btn;
-        document.dir = curLang === 'ar' ? 'rtl' : 'ltr';
-    }
-
     async function loadData() {
-        try {
-            const sRes = await fetch(`/business/${bid}/services`);
-            const services = await sRes.json();
-            document.getElementById('sTableBody').innerHTML = services.map(s => `<tr><td>${s.name}</td><td>${s.price}$</td><td>${s.duration} د</td></tr>`).join('');
+        const sRes = await fetch(`/business/${bid}/services`);
+        const services = await sRes.json();
+        document.getElementById('sTableBody').innerHTML = services.map(s => `
+            <tr><td>${s.name}</td><td>${s.price}$</td><td>${s.duration} د</td>
+            <td><button class="btn-del" onclick="deleteS(${s.id})">حذف</button></td></tr>
+        `).join('');
 
-            const bRes = await fetch(`/business/${bid}/bookings`);
-            const bookings = await bRes.json();
-            document.getElementById('bTableBody').innerHTML = bookings.map(b => `<tr><td>${b.customer_name}<br><small>${b.customer_phone}</small></td><td>${b.service_name}</td><td>${b.booking_date}<br>${b.booking_time}</td></tr>`).join('');
-        } catch (e) { console.error(e); }
+        const bRes = await fetch(`/business/${bid}/bookings`);
+        const bookings = await bRes.json();
+        document.getElementById('bTableBody').innerHTML = bookings.map(b => `
+            <tr><td>${b.customer_name}<br><small>${b.customer_phone}</small></td>
+            <td>${b.service_name}</td><td>${b.booking_date} ${b.booking_time}</td></tr>
+        `).join('');
     }
 
     async function addS() {
-        const res = await fetch('/add-service/', {
+        await fetch('/add-service/', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ business_id: parseInt(bid), name: document.getElementById('sName').value, duration: parseInt(document.getElementById('sDur').value), price: parseFloat(document.getElementById('sPrice').value) })
         });
-        if (res.ok) {
-            document.getElementById('sName').value = '';
-            document.getElementById('sPrice').value = '';
-            document.getElementById('sDur').value = '';
-            await loadData();
+        loadData();
+    }
+
+    async function deleteS(id) {
+        if(confirm("حذف الخدمة؟")) {
+            await fetch(`/services/${id}`, { method: 'DELETE' });
+            loadData();
         }
     }
 
