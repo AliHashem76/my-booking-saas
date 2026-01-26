@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root { --primary-color: #6366f1; --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%); --glass: rgba(255,255,255,0.95); }
+        body { font-family: 'Tajawal'; background: var(--bg-gradient); padding: 20px; color: #333; }
+        .container { max-width: 1000px; margin: 0 auto; display: grid; gap: 20px; }
+        .card { background: var(--glass); padding: 25px; border-radius: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.1); position: relative; }
+        
+        .header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .logout-btn { background: #fee2e2; color: #991b1b; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+
+        /* باقي الستايلات كما هي */
+        .lang-btn { position: absolute; top: 25px; left: 25px; background: #f3f4f6; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-family: 'Tajawal'; font-weight: bold; display: flex; align-items: center; gap: 8px; }
+        html[dir="ltr"] .lang-btn { left: auto; right: 25px; }
+        h2 { margin-top:0; color: #4f46e5; display:flex; gap:10px; align-items:center; }
+        .form-row { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; margin-bottom: 20px; }
+        input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-family: 'Tajawal'; }
+        .btn-add { background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; min-width: 100px; }
+        .btn-update { background: #f59e0b; color: white; }
+        table { width: 100%; border-collapse: collapse; margin-top: 5px; }
+        th { padding: 10px; color: #666; border-bottom: 2px solid #eee; text-align: start; font-size: 0.9rem; }
+        td { padding: 10px; border-bottom: 1px solid #eee; vertical-align: middle; font-size: 0.95rem; }
+        .srv-price { background: #ecfdf5; color: #047857; padding: 3px 8px; border-radius: 5px; font-weight: bold; font-size: 0.85rem; }
+        .btn-icon { border: none; background: transparent; cursor: pointer; font-size: 1rem; padding: 5px; transition: 0.2s; }
+        .btn-edit { color: #f59e0b; }
+        .btn-delete { color: #ef4444; }
+        .phone-badge { background: #f3f4f6; padding: 5px 10px; border-radius: 8px; font-size: 0.9rem; direction: ltr; display: inline-block; }
+        .status-ok { background: #d1fae5; color: #065f46; padding: 4px 10px; border-radius: 15px; font-size: 0.8rem; font-weight: bold; }
+        .status-cancel { background: #f3f4f6; color: #999; padding: 4px 10px; border-radius: 15px; font-size: 0.8rem; text-decoration: line-through; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    
+    <div class="card header-bar">
+        <div>
+            <h2 style="margin:0">👋 مرحباً, <span id="shopNameDisplay">...</span></h2>
+        </div>
+        <div>
+            <button class="logout-btn" onclick="logout()">تسجيل خروج <i class="fa-solid fa-right-from-bracket"></i></button>
+        </div>
+    </div>
+
+    <div class="card">
+        <button class="lang-btn" onclick="toggleLanguage()"><i class="fa-solid fa-globe"></i> <span id="langText">English</span></button>
+        <h2 data-i18n="manageServices"><i class="fa-solid fa-scissors"></i> إدارة الخدمات</h2>
+        
+        <div class="form-row">
+            <input type="hidden" id="sId">
+            <input type="text" id="sName" placeholder="اسم الخدمة">
+            <input type="number" id="sDur" placeholder="المدة (د)">
+            <input type="number" id="sPrice" placeholder="السعر ($)">
+            <button id="serviceBtn" class="btn-add" onclick="handleServiceSubmit()" data-i18n="btnAdd">إضافة</button>
+            <button id="cancelEditBtn" style="display:none; background:#9ca3af; border:none; padding:10px; border-radius:8px; color:white; cursor:pointer;" onclick="resetForm()">✖</button>
+        </div>
+
+        <table id="servicesTable">
+            <thead>
+                <tr><th data-i18n="phName">الاسم</th><th data-i18n="phDur">المدة</th><th data-i18n="phPrice">السعر</th><th data-i18n="colAction">إجراء</th></tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <div style="display:flex; justify-content:space-between;">
+            <h2 data-i18n="bookingsTitle"><i class="fa-solid fa-list"></i> الحجوزات</h2>
+            <small id="lastUpd">Live</small>
+        </div>
+        <div style="overflow-x:auto">
+            <table id="bookingsTable">
+                <thead>
+                    <tr><th>#</th><th data-i18n="colCustomer">الزبون</th><th data-i18n="colPhone">الهاتف</th><th data-i18n="colDetails">التفاصيل</th><th data-i18n="colStatus">الحالة</th><th data-i18n="colAction">إجراء</th></tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 🔐 التحقق من تسجيل الدخول
+    const BID = localStorage.getItem('saas_business_id');
+    const BNAME = localStorage.getItem('saas_business_name');
+    
+    if (!BID) {
+        window.location.href = 'login.html'; // طرد المستخدم إذا لم يسجل دخوله
+    }
+    document.getElementById('shopNameDisplay').innerText = BNAME || 'Admin';
+
+    function logout() {
+        localStorage.clear();
+        window.location.href = 'login.html';
+    }
+
+    const API = "";
+    let isEditing = false;
+    
+    // --- (نفس كود الترجمة والمنطق السابق تماماً) ---
+    // سأضعه هنا ليعمل معك مباشرة
+
+    const translations = {
+        ar: {
+            manageServices: "إدارة الخدمات", btnAdd: "إضافة", btnUpdate: "حفظ التعديل", bookingsTitle: "الحجوزات",
+            colCustomer: "الزبون", colPhone: "الهاتف", colDetails: "التفاصيل", colStatus: "الحالة", colAction: "إجراء",
+            phName: "اسم الخدمة", phDur: "المدة (د)", phPrice: "السعر ($)", statusOk: "مؤكد", statusCancel: "ملغي", langBtn: "English",
+            msgSaved: "تم الحفظ بنجاح", msgDeleted: "تم الحذف", confirmDel: "حذف؟"
+        },
+        en: {
+            manageServices: "Manage Services", btnAdd: "Add", btnUpdate: "Update", bookingsTitle: "Bookings",
+            colCustomer: "Customer", colPhone: "Phone", colDetails: "Details", colStatus: "Status", colAction: "Action",
+            phName: "Service Name", phDur: "Duration (m)", phPrice: "Price ($)", statusOk: "Confirmed", statusCancel: "Cancelled", langBtn: "العربية",
+            msgSaved: "Saved Successfully", msgDeleted: "Deleted", confirmDel: "Delete?"
+        }
+    };
+
+    let currentLang = localStorage.getItem('lang') || 'ar';
+    function updateUI() {
+        document.documentElement.lang = currentLang;
+        document.documentElement.dir = currentLang === 'ar' ? 'rtl' : 'ltr';
+        document.getElementById('langText').innerText = translations[currentLang].langBtn;
+        document.querySelectorAll('[data-i18n]').forEach(el => { el.innerText = translations[currentLang][el.getAttribute('data-i18n')]; });
+        document.getElementById('serviceBtn').innerText = translations[currentLang][isEditing ? 'btnUpdate' : 'btnAdd'];
+        document.getElementById('sName').placeholder = translations[currentLang].phName;
+        document.getElementById('sDur').placeholder = translations[currentLang].phDur;
+        document.getElementById('sPrice').placeholder = translations[currentLang].phPrice;
+        loadServices(); loadBookings();
+    }
+    function toggleLanguage() { currentLang = currentLang === 'ar' ? 'en' : 'ar'; localStorage.setItem('lang', currentLang); updateUI(); }
+    updateUI();
+
+    async function loadServices() {
+        try {
+            const res = await fetch(`${API}/business/${BID}/services`);
+            const services = await res.json();
+            const tbody = document.querySelector("#servicesTable tbody");
+            tbody.innerHTML = "";
+            services.forEach(s => {
+                tbody.innerHTML += `<tr><td style="font-weight:bold; color:#4f46e5">${s.name}</td><td>${s.duration} ${currentLang==='ar'?'د':'m'}</td><td><span class="srv-price">${s.price}$</span></td>
+                <td><button class="btn-icon btn-edit" onclick="startEdit(${s.id}, '${s.name}', ${s.duration}, ${s.price})"><i class="fa-solid fa-pen"></i></button>
+                <button class="btn-icon btn-delete" onclick="deleteService(${s.id})"><i class="fa-solid fa-trash"></i></button></td></tr>`;
+            });
+        } catch(e) {}
+    }
+
+    async function handleServiceSubmit() {
+        const id = document.getElementById('sId').value;
+        const name = document.getElementById('sName').value;
+        const dur = document.getElementById('sDur').value;
+        const price = document.getElementById('sPrice').value;
+        if(!name) return;
+        const endpoint = isEditing ? `/services/${id}` : `/add-service/`;
+        const method = isEditing ? 'PUT' : 'POST';
+        const bodyData = { name: name, duration: parseInt(dur), price: parseFloat(price) };
+        if(!isEditing) bodyData.business_id = parseInt(BID);
+
+        await fetch(`${API}${endpoint}`, { method: method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(bodyData) });
+        alert(translations[currentLang].msgSaved); resetForm(); loadServices();
+    }
+
+    window.startEdit = function(id, name, dur, price) {
+        isEditing = true;
+        document.getElementById('sId').value = id;
+        document.getElementById('sName').value = name;
+        document.getElementById('sDur').value = dur;
+        document.getElementById('sPrice').value = price;
+        const btn = document.getElementById('serviceBtn');
+        btn.innerText = translations[currentLang].btnUpdate;
+        btn.classList.add('btn-update');
+        document.getElementById('cancelEditBtn').style.display = 'block';
+    }
+
+    window.resetForm = function() {
+        isEditing = false;
+        document.getElementById('sId').value = '';
+        document.getElementById('sName').value = '';
+        document.getElementById('sDur').value = '';
+        document.getElementById('sPrice').value = '';
+        const btn = document.getElementById('serviceBtn');
+        btn.innerText = translations[currentLang].btnAdd;
+        btn.classList.remove('btn-update');
+        document.getElementById('cancelEditBtn').style.display = 'none';
+    }
+
+    window.deleteService = async function(id) {
+        if(!confirm(translations[currentLang].confirmDel)) return;
+        await fetch(`${API}/services/${id}`, { method: 'DELETE' });
+        loadServices();
+    }
+
+    async function cancelBooking(id) {
+        if(!confirm(translations[currentLang].confirmDel)) return;
+        await fetch(`${API}/bookings/${id}/cancel`, { method: 'POST' });
+        loadBookings();
+    }
+
+    async function loadBookings() {
+        try {
+            const res = await fetch(`${API}/business/${BID}/bookings?t=${Date.now()}`);
+            const data = await res.json();
+            const tbody = document.querySelector("#bookingsTable tbody");
+            document.getElementById("lastUpd").innerText = new Date().toLocaleTimeString();
+            tbody.innerHTML = "";
+            if(data.length === 0) { tbody.innerHTML = `<tr><td colspan='6' style='text-align:center'>-</td></tr>`; return; }
+
+            data.forEach(b => {
+                const isCanceled = b.status === 'cancelled';
+                const dateObj = new Date(b.booking_date);
+                const locale = currentLang === 'ar' ? 'ar-LB' : 'en-US';
+                const day = dateObj.toLocaleDateString(locale, {weekday:'long'});
+                const date = dateObj.toLocaleDateString(locale, {day:'numeric', month:'short'});
+                const time = b.booking_time.slice(0,5);
+                const statusText = isCanceled ? translations[currentLang].statusCancel : translations[currentLang].statusOk;
+                const row = `<tr style="${isCanceled ? 'opacity:0.6' : ''}"><td>${b.id}</td><td style="font-weight:bold">${b.customer_name}</td><td><span class="phone-badge">${b.customer_phone}</span></td>
+                <td><div style="color:#4f46e5;font-weight:bold">${b.service_name}</div><div style="color:#666;font-size:0.85rem">${day} ${date} | ${time}</div></td>
+                <td>${isCanceled ? `<span class="status-cancel">${statusText}</span>` : `<span class="status-ok">${statusText}</span>`}</td>
+                <td>${!isCanceled ? `<button class="btn-icon btn-delete" onclick="cancelBooking(${b.id})"><i class="fa-solid fa-trash"></i></button>` : '-'}</td></tr>`;
+                tbody.innerHTML += row;
+            });
+        } catch(e) {}
+    }
+    
+    if (!window.intervalStarted) { setInterval(loadBookings, 4000); window.intervalStarted = true; }
+</script>
+</body>
+</html>
