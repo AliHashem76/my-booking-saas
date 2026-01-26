@@ -3,60 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تسجيل الدخول - نظام الحجوزات</title>
+    <title>تسجيل الدخول - لوحة التحكم</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .login-card { background: white; padding: 40px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); width: 100%; max-width: 350px; text-align: center; }
-        h2 { color: #333; margin-bottom: 25px; }
-        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
-        button { width: 100%; padding: 12px; background: #4a90e2; color: white; border: none; border-radius: 8px; font-size: 18px; cursor: pointer; transition: 0.3s; margin-top: 15px; }
-        button:hover { background: #357abd; }
-        .error-msg { color: red; font-size: 14px; margin-top: 10px; display: none; }
+        :root { --primary: #ff9800; --dark: #1a1a1a; --card-bg: #262626; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: var(--dark); color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .login-card { background: var(--card-bg); padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 100%; max-width: 380px; text-align: center; border-top: 4px solid var(--primary); }
+        h2 { margin-bottom: 30px; color: var(--primary); font-size: 28px; }
+        input { width: 100%; padding: 12px; margin: 12px 0; border: 1px solid #444; border-radius: 10px; background: #333; color: white; box-sizing: border-box; font-size: 16px; outline: none; }
+        input:focus { border-color: var(--primary); }
+        button { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-top: 20px; }
+        button:hover { background: #e68a00; transform: translateY(-2px); }
+        .error { color: #ff4444; font-size: 14px; margin-top: 15px; display: none; }
     </style>
 </head>
 <body>
     <div class="login-card">
         <h2>دخول المدير</h2>
-        <input type="text" id="phone" placeholder="رقم الهاتف (961...)">
+        <input type="text" id="phone" placeholder="رقم الهاتف">
         <input type="password" id="pass" placeholder="كلمة المرور">
-        <div id="error" class="error-msg">خطأ في البيانات، حاول مجدداً</div>
-        <button onclick="doLogin()">تسجيل الدخول</button>
+        <div id="error" class="error">بيانات الدخول غير صحيحة</div>
+        <button onclick="doLogin()">دخول النظام</button>
     </div>
 
     <script>
         async function doLogin() {
-            const btn = document.querySelector('button');
-            btn.innerText = "جاري التحقق...";
-            
             try {
                 const res = await fetch('/login', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ 
-                        phone: document.getElementById('phone').value, 
-                        password: document.getElementById('pass').value 
-                    })
+                    body: JSON.stringify({ phone: document.getElementById('phone').value, password: document.getElementById('pass').value })
                 });
-
                 if (res.ok) {
                     const data = await res.json();
-                    // التخزين الإجباري
-                    localStorage.clear();
-                    localStorage.setItem('business_id', String(data.business_id));
+                    localStorage.setItem('business_id', data.business_id);
                     localStorage.setItem('business_name', data.business_name);
-                    
-                    // تأكيد الحفظ قبل الانتقال
-                    if(localStorage.getItem('business_id')) {
-                        window.location.replace('/admin');
-                    }
-                } else {
-                    document.getElementById('error').style.display = 'block';
-                    btn.innerText = "تسجيل الدخول";
-                }
-            } catch (err) {
-                alert("تعذر الاتصال بالسيرفر");
-                btn.innerText = "تسجيل الدخول";
-            }
+                    window.location.replace('/admin');
+                } else { document.getElementById('error').style.display = 'block'; }
+            } catch (e) { alert("فشل الاتصال بالسيرفر"); }
         }
     </script>
 </body>

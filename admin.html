@@ -5,25 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>لوحة التحكم</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; padding: 20px; }
-        .header { background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .card { background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        h2, h3 { color: #1a73e8; margin-top: 0; }
-        .form-group { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
-        input { padding: 10px; border: 1px solid #ddd; border-radius: 6px; flex: 1; min-width: 150px; }
-        button { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        .btn-add { background: #28a745; color: white; }
-        .btn-logout { background: #dc3545; color: white; }
-        table { width: 100%; border-collapse: collapse; background: white; }
-        th, td { padding: 12px; border-bottom: 1px solid #eee; text-align: center; }
-        th { background: #f8f9fa; }
-        .status-badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; background: #e6ffed; color: #218838; }
+        :root { --primary: #ff9800; --dark: #1a1a1a; --card: #262626; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--dark); color: #eee; margin: 0; padding: 20px; }
+        .container { max-width: 900px; margin: auto; }
+        .header { background: var(--card); padding: 20px; border-radius: 15px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; border-right: 5px solid var(--primary); }
+        .card { background: var(--card); padding: 25px; border-radius: 15px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        h3 { color: var(--primary); margin-top: 0; border-bottom: 1px solid #444; padding-bottom: 10px; }
+        .form-group { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px; }
+        input { background: #333; border: 1px solid #444; color: white; padding: 12px; border-radius: 8px; flex: 1; min-width: 140px; }
+        button { padding: 12px 25px; border-radius: 8px; cursor: pointer; font-weight: bold; border: none; transition: 0.3s; }
+        .btn-add { background: var(--primary); color: white; }
+        .btn-logout { background: #444; color: white; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th { background: #333; color: var(--primary); padding: 15px; text-align: center; }
+        td { padding: 15px; border-bottom: 1px solid #333; text-align: center; }
+        tr:hover { background: #2d2d2d; }
     </style>
 </head>
 <body>
 
+<div class="container">
     <div class="header">
-        <h2 id="nameTag">لوحة التحكم</h2>
+        <h2 id="nameTag" style="margin:0; color:var(--primary);">لوحة التحكم</h2>
         <button class="btn-logout" onclick="logout()">خروج</button>
     </div>
 
@@ -48,69 +51,63 @@
     <div class="card">
         <h3>📅 الحجوزات المستلمة</h3>
         <table>
-            <thead><tr><th>الزبون</th><th>الخدمة</th><th>التاريخ</th><th>الوقت</th></tr></thead>
+            <thead><tr><th>الزبون</th><th>الخدمة</th><th>التاريخ والوقت</th></tr></thead>
             <tbody id="bTableBody"></tbody>
         </table>
     </div>
+</div>
 
-    <script>
-        const bid = localStorage.getItem('business_id');
-        if (!bid || bid === "null") { window.location.replace('/login'); }
-        
-        document.getElementById('nameTag').innerText = "لوحة تحكم: " + localStorage.getItem('business_name');
+<script>
+    const bid = localStorage.getItem('business_id');
+    if (!bid || bid === "null") { window.location.replace('/login'); }
+    document.getElementById('nameTag').innerText = "لوحة " + localStorage.getItem('business_name');
 
-        async function loadData() {
-            // جلب الخدمات
+    async function loadAllData() {
+        try {
+            // جلب الخدمات - تأكد من الرابط الصحيح
             const sRes = await fetch(`/business/${bid}/services`);
             const services = await sRes.json();
-            document.getElementById('sTableBody').innerHTML = services.map(s => `
+            const sBody = document.getElementById('sTableBody');
+            sBody.innerHTML = services.length > 0 ? services.map(s => `
                 <tr><td>${s.name}</td><td>${s.price}$</td><td>${s.duration} دقيقة</td></tr>
-            `).join('');
+            `).join('') : '<tr><td colspan="3">لا توجد خدمات مضافة بعد</td></tr>';
 
             // جلب الحجوزات
             const bRes = await fetch(`/business/${bid}/bookings`);
             const bookings = await bRes.json();
-            document.getElementById('bTableBody').innerHTML = bookings.map(b => `
+            const bBody = document.getElementById('bTableBody');
+            bBody.innerHTML = bookings.length > 0 ? bookings.map(b => `
                 <tr>
-                    <td>${b.customer_name}</td>
+                    <td>${b.customer_name}<br><small style="color:#888">${b.customer_phone || ''}</small></td>
                     <td>${b.service_name}</td>
-                    <td>${b.booking_date}</td>
-                    <td>${b.booking_time}</td>
+                    <td>${b.booking_date} / ${b.booking_time}</td>
                 </tr>
-            `).join('');
-        }
+            `).join('') : '<tr><td colspan="3">لا توجد حجوزات حالياً</td></tr>';
+        } catch (e) { console.error("Error loading data:", e); }
+    }
 
-        async function addS() {
-            const name = document.getElementById('sName').value;
-            const price = document.getElementById('sPrice').value;
-            const dur = document.getElementById('sDur').value;
+    async function addS() {
+        const name = document.getElementById('sName').value;
+        const price = document.getElementById('sPrice').value;
+        const dur = document.getElementById('sDur').value;
+        if(!name || !price || !dur) return alert("يرجى إكمال البيانات");
 
-            if(!name || !price || !dur) return alert("امسح الخانات الفارغة!");
-
-            await fetch('/add-service/', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    business_id: parseInt(bid),
-                    name: name,
-                    duration: parseInt(dur),
-                    price: parseFloat(price)
-                })
-            });
-            
-            // تنظيف وإعادة تحميل
+        const res = await fetch('/add-service/', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ business_id: parseInt(bid), name, duration: parseInt(dur), price: parseFloat(price) })
+        });
+        if (res.ok) {
             document.getElementById('sName').value = '';
             document.getElementById('sPrice').value = '';
             document.getElementById('sDur').value = '';
-            loadData();
+            loadAllData();
         }
+    }
 
-        function logout() {
-            localStorage.clear();
-            window.location.replace('/login');
-        }
+    function logout() { localStorage.clear(); window.location.replace('/login'); }
+    window.onload = loadAllData;
+</script>
 
-        window.onload = loadData;
-    </script>
 </body>
 </html>
