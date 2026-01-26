@@ -1,61 +1,37 @@
 <!DOCTYPE html>
-<html dir="rtl" lang="ar">
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تسجيل دخول المدير</title>
-    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
+    <title>تسجيل الدخول</title>
     <style>
-        body { font-family: 'Tajawal'; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .login-card { background: white; padding: 40px; border-radius: 15px; width: 100%; max-width: 350px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
-        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; background: #6366f1; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        button:hover { background: #4f46e5; }
-        .error { color: red; font-size: 0.9rem; margin-top: 10px; display: none; }
+        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background: #eee; }
+        .card { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); width: 300px; text-align: center; }
+        input { width: 90%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px; }
+        button { width: 100%; padding: 10px; background: #27ae60; color: white; border: none; border-radius: 5px; cursor: pointer; }
     </style>
 </head>
 <body>
+    <div class="card">
+        <h2>دخول الإدارة</h2>
+        <input type="text" id="phone" placeholder="رقم الهاتف">
+        <input type="password" id="pass" placeholder="كلمة المرور">
+        <button onclick="doLogin()">دخول</button>
+    </div>
 
-<div class="login-card">
-    <h2>👋 أهلاً بك</h2>
-    <p>سجل دخولك لإدارة حجوزاتك</p>
-    
-    <input type="text" id="phone" placeholder="رقم الهاتف المسجل">
-    <input type="password" id="password" placeholder="كلمة المرور">
-    
-    <button onclick="login()">دخول</button>
-    <div id="errorMsg" class="error">بيانات الدخول غير صحيحة</div>
-</div>
-
-<script>
-    async function login() {
-        const phone = document.getElementById('phone').value;
-        const password = document.getElementById('password').value;
-        const errorMsg = document.getElementById('errorMsg');
-
-        try {
+    <script>
+        async function doLogin() {
             const res = await fetch('/login', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phone: phone, password: password })
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ phone: document.getElementById('phone').value, password: document.getElementById('pass').value })
             });
-
             if (res.ok) {
                 const data = await res.json();
-                // 🔐 حفظنا رقم المحل في المتصفح
-                localStorage.setItem('saas_business_id', data.business_id);
-                localStorage.setItem('saas_business_name', data.business_name);
-                
-                // الانتقال للوحة التحكم
-                window.location.href = '/admin';
-            } else {
-                errorMsg.style.display = 'block';
-            }
-        } catch (e) {
-            alert("خطأ في الاتصال");
+                localStorage.setItem('business_id', data.business_id);
+                localStorage.setItem('business_name', data.business_name);
+                setTimeout(() => { window.location.href = '/admin'; }, 200);
+            } else { alert("خطأ في البيانات"); }
         }
-    }
-</script>
-
+    </script>
 </body>
 </html>

@@ -2,171 +2,73 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة تحكم الإدارة</title>
+    <title>لوحة التحكم</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; text-align: center; }
-        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        h2 { color: #2c3e50; }
-        .section { margin-bottom: 30px; padding: 15px; border: 1px solid #eee; border-radius: 8px; }
-        input, select, button { padding: 10px; margin: 5px; border-radius: 5px; border: 1px solid #ddd; width: 80%; max-width: 300px; }
-        button { background-color: #27ae60; color: white; border: none; cursor: pointer; transition: 0.3s; width: auto; min-width: 150px; }
-        button:hover { background-color: #219150; }
-        .btn-delete { background-color: #e74c3c; padding: 5px 10px; min-width: 60px; }
-        .btn-delete:hover { background-color: #c0392b; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 12px; text-align: center; }
-        th { background-color: #f8f9fa; color: #333; }
-        tr:nth-child(even) { background-color: #f9f9f9; }
+        body { font-family: sans-serif; padding: 20px; background: #f9f9f9; }
+        .box { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
+        th { background: #eee; }
     </style>
 </head>
 <body>
-
-<div class="container">
-    <h2 id="welcomeMsg">لوحة التحكم</h2>
-    <p>مرحباً بك في نظام إدارة الحجوزات</p>
-    <button onclick="logout()" style="background-color: #7f8c8d;">تسجيل الخروج</button>
-
-    <hr>
-
-    <div class="section">
-        <h3>➕ إضافة خدمة جديدة</h3>
-        <input type="text" id="serviceName" placeholder="اسم الخدمة (مثلاً: حلاقة ذقن)">
-        <input type="number" id="servicePrice" placeholder="السعر ($)">
-        <input type="number" id="serviceDuration" placeholder="المدة (بالدقائق)">
-        <button onclick="addService()">إضافة الخدمة</button>
+    <div class="box">
+        <h2 id="nameTag">لوحة التحكم</h2>
+        <button onclick="localStorage.clear(); window.location.href='/login'">خروج</button>
     </div>
 
-    <div class="section">
-        <h3>📋 خدماتك الحالية</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>الخدمة</th>
-                    <th>السعر</th>
-                    <th>المدة</th>
-                    <th>إجراء</th>
-                </tr>
-            </thead>
-            <tbody id="servicesList">
-                </tbody>
-        </table>
+    <div class="box">
+        <h3>إضافة خدمة</h3>
+        <input id="sName" placeholder="الخدمة">
+        <input id="sPrice" placeholder="السعر">
+        <input id="sDur" placeholder="المدة">
+        <button onclick="addS()">حفظ</button>
     </div>
 
-    <div class="section">
-        <h3>📅 الحجوزات القادمة</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>الزبون</th>
-                    <th>الخدمة</th>
-                    <th>التاريخ والوقت</th>
-                    <th>الحالة</th>
-                </tr>
-            </thead>
-            <tbody id="bookingsList">
-                </tbody>
-        </table>
+    <div class="box">
+        <h3>الخدمات</h3>
+        <table id="sTable"><thead><tr><th>الخدمة</th><th>السعر</th><th>المدة</th></tr></thead><tbody></tbody></table>
     </div>
-</div>
 
-<script>
-    const businessId = localStorage.getItem('business_id');
-    const businessName = localStorage.getItem('business_name');
+    <div class="box">
+        <h3>الحجوزات</h3>
+        <table id="bTable"><thead><tr><th>الزبون</th><th>الخدمة</th><th>الموعد</th></tr></thead><tbody></tbody></table>
+    </div>
 
-    if (!businessId) {
-        window.location.href = '/login';
-    } else {
-        document.getElementById('welcomeMsg').innerText = `لوحة تحكم ${businessName}`;
-    }
+    <script>
+        const bid = localStorage.getItem('business_id');
+        if (!bid) { window.location.href = '/login'; }
+        document.getElementById('nameTag').innerText = "لوحة تحكم " + localStorage.getItem('business_name');
 
-    // 1. جلب وعرض الخدمات
-    async function loadServices() {
-        const response = await fetch(`/business/${businessId}/services`);
-        const services = await response.json();
-        const list = document.getElementById('servicesList');
-        list.innerHTML = '';
-
-        services.forEach(s => {
-            list.innerHTML += `
-                <tr>
-                    <td>${s.name}</td>
-                    <td>${s.price}$</td>
-                    <td>${s.duration} دقيقة</td>
-                    <td><button class="btn-delete" onclick="deleteService(${s.id})">حذف</button></td>
-                </tr>
-            `;
-        });
-    }
-
-    // 2. إضافة خدمة
-    async function addService() {
-        const name = document.getElementById('serviceName').value;
-        const price = document.getElementById('servicePrice').value;
-        const duration = document.getElementById('serviceDuration').value;
-
-        if (!name || !price || !duration) {
-            alert("يرجى ملء جميع الخانات");
-            return;
+        async function loadS() {
+            const res = await fetch(`/business/${bid}/services`);
+            const data = await res.json();
+            const body = document.querySelector('#sTable tbody');
+            body.innerHTML = data.map(s => `<tr><td>${s.name}</td><td>${s.price}$</td><td>${s.duration} د</td></tr>`).join('');
         }
 
-        const response = await fetch('/add-service/', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                business_id: parseInt(businessId),
-                name: name,
-                duration: parseInt(duration),
-                price: parseFloat(price)
-            })
-        });
-
-        if (response.ok) {
-            alert("تمت إضافة الخدمة بنجاح ✅");
-            document.getElementById('serviceName').value = '';
-            document.getElementById('servicePrice').value = '';
-            document.getElementById('serviceDuration').value = '';
-            loadServices(); // تحديث القائمة فوراً
+        async function addS() {
+            await fetch('/add-service/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    business_id: parseInt(bid),
+                    name: document.getElementById('sName').value,
+                    duration: parseInt(document.getElementById('sDur').value),
+                    price: parseFloat(document.getElementById('sPrice').value)
+                })
+            });
+            loadS(); // تحديث فوري
         }
-    }
 
-    // 3. حذف خدمة
-    async function deleteService(id) {
-        if (!confirm("هل أنت متأكد من حذف هذه الخدمة؟")) return;
-        const response = await fetch(`/services/${id}`, { method: 'DELETE' });
-        if (response.ok) loadServices();
-    }
+        async function loadB() {
+            const res = await fetch(`/business/${bid}/bookings`);
+            const data = await res.json();
+            const body = document.querySelector('#bTable tbody');
+            body.innerHTML = data.map(b => `<tr><td>${b.customer_name}</td><td>${b.service_name}</td><td>${b.booking_date} ${b.booking_time}</td></tr>`).join('');
+        }
 
-    // 4. جلب الحجوزات
-    async function loadBookings() {
-        const response = await fetch(`/business/${businessId}/bookings`);
-        const bookings = await response.json();
-        const list = document.getElementById('bookingsList');
-        list.innerHTML = '';
-
-        bookings.forEach(b => {
-            list.innerHTML += `
-                <tr>
-                    <td>${b.customer_name}<br><small>${b.customer_phone}</small></td>
-                    <td>${b.service_name}</td>
-                    <td>${b.booking_date}<br>${b.booking_time}</td>
-                    <td>${b.status == 'confirmed' ? '✅ مؤكد' : '❌ ملغى'}</td>
-                </tr>
-            `;
-        });
-    }
-
-    function logout() {
-        localStorage.clear();
-        window.location.href = '/login';
-    }
-
-    // تشغيل الجلب عند فتح الصفحة
-    window.onload = () => {
-        loadServices();
-        loadBookings();
-    };
-</script>
-
+        window.onload = () => { loadS(); loadB(); };
+    </script>
 </body>
 </html>
