@@ -2,49 +2,47 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>دخول الإدارة</title>
+    <title>تسجيل الدخول</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; color: #333; }
-        .card { background: #fff; padding: 40px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); width: 100%; max-width: 350px; text-align: center; position: relative; }
-        .lang-switch { position: absolute; top: 15px; left: 15px; cursor: pointer; font-size: 14px; color: #667eea; font-weight: bold; }
-        h2 { color: #4834d4; margin-bottom: 25px; }
-        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 16px; background: #f9f9f9; }
-        button { width: 100%; padding: 14px; background: #5f27cd; color: white; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-top: 15px; }
-        button:hover { background: #341f97; transform: translateY(-2px); }
+        body { font-family: 'Cairo', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: rgba(255,255,255,0.95); padding: 40px; border-radius: 20px; width: 350px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.2); position: relative; }
+        .lang-btn { position: absolute; top: 15px; left: 15px; background: none; border: 1px solid #6c5ce7; color: #6c5ce7; padding: 5px 10px; border-radius: 10px; cursor: pointer; }
+        h2 { color: #6c5ce7; margin-bottom: 20px; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border: 2px solid #eee; border-radius: 10px; font-family: 'Cairo'; outline: none; box-sizing: border-box; }
+        input:focus { border-color: #6c5ce7; }
+        button.login-btn { width: 100%; padding: 14px; background: #6c5ce7; color: white; border: none; border-radius: 10px; font-size: 1.1rem; cursor: pointer; transition: 0.3s; margin-top: 10px; }
+        button.login-btn:hover { background: #5649c0; }
     </style>
 </head>
 <body>
     <div class="card">
-        <div class="lang-switch" onclick="toggleLang()" id="langBtn">English</div>
-        <h2 id="t-login">دخول المدير</h2>
+        <button class="lang-btn" onclick="toggleLang()" id="lBtn">English</button>
+        <h2 id="tTitle">دخول الإدارة</h2>
         <input type="text" id="phone" placeholder="رقم الهاتف">
         <input type="password" id="pass" placeholder="كلمة المرور">
-        <button onclick="doLogin()" id="t-btn">دخول</button>
+        <button class="login-btn" onclick="login()" id="bLogin">دخول</button>
     </div>
-
     <script>
-        let currentLang = 'ar';
+        let lang = 'ar';
         function toggleLang() {
-            currentLang = currentLang === 'ar' ? 'en' : 'ar';
-            document.getElementById('langBtn').innerText = currentLang === 'ar' ? 'English' : 'العربية';
-            document.getElementById('t-login').innerText = currentLang === 'ar' ? 'دخول المدير' : 'Admin Login';
-            document.getElementById('t-btn').innerText = currentLang === 'ar' ? 'دخول' : 'Login';
-            document.dir = currentLang === 'ar' ? 'rtl' : 'ltr';
+            lang = lang === 'ar' ? 'en' : 'ar';
+            document.dir = lang === 'ar' ? 'rtl' : 'ltr';
+            document.getElementById('lBtn').innerText = lang === 'ar' ? 'English' : 'العربية';
+            document.getElementById('tTitle').innerText = lang === 'ar' ? 'دخول الإدارة' : 'Admin Login';
+            document.getElementById('bLogin').innerText = lang === 'ar' ? 'دخول' : 'Login';
         }
-
-        async function doLogin() {
+        async function login() {
             const res = await fetch('/login', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
+                method: 'POST', headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ phone: document.getElementById('phone').value, password: document.getElementById('pass').value })
             });
-            if (res.ok) {
+            if(res.ok) {
                 const data = await res.json();
                 localStorage.setItem('business_id', data.business_id);
                 localStorage.setItem('business_name', data.business_name);
                 window.location.replace('/admin');
-            } else { alert(currentLang === 'ar' ? "خطأ في البيانات" : "Wrong Data"); }
+            } else alert("Error");
         }
     </script>
 </body>

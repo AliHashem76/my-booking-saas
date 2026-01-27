@@ -1,7 +1,6 @@
 import datetime
 import uvicorn
 import os
-import requests
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -9,7 +8,7 @@ from pydantic import BaseModel
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, Date, Time, Float
 from sqlalchemy.orm import sessionmaker, Session, declarative_base
 
-# إعدادات قاعدة البيانات السحابية
+# إعدادات قاعدة البيانات
 DATABASE_URL = os.environ.get("DATABASE_URL")
 if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
@@ -47,15 +46,6 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-# دالة إرسال واتساب (UltraMsg)
-def send_whatsapp(mobile, message):
-    INSTANCE_ID = "instance160055" 
-    TOKEN = "zhuhv62xrig7fziq"
-    url = f"https://api.ultramsg.com/{INSTANCE_ID}/messages/chat"
-    payload = {"token": TOKEN, "to": mobile, "body": message}
-    try: requests.post(url, data=payload, headers={'content-type': 'application/x-www-form-urlencoded'})
-    except: print("WhatsApp Error")
-
 def get_db():
     db = SessionLocal()
     try: yield db
@@ -73,21 +63,34 @@ def login(req: LoginReq, db: Session = Depends(get_db)):
     if not b: raise HTTPException(400)
     return {"business_id": b.id, "business_name": b.name}
 
+# إضافة خدمة
 @app.post("/add-service/")
 def add_service(req: ServiceReq, db: Session = Depends(get_db)):
     s = Service(business_id=req.business_id, name=req.name, duration=req.duration, price=req.price)
     db.add(s); db.commit(); return {"status": "success"}
 
+# تعديل خدمة (الجديد)
+@app.put("/services/{service_id}")
+def update_service(service_id: int, req: ServiceReq, db: Session = Depends(get_db)):
+    s = db.query(Service).filter(Service.id == service_id).first()
+    if not s: raise HTTPException(404)
+    s.name = req.name; s.price = req.price; s.duration = req.duration
+    db.commit()
+    return {"status": "updated"}
+
+# حذف خدمة
 @app.delete("/services/{service_id}")
 def delete_service(service_id: int, db: Session = Depends(get_db)):
     s = db.query(Service).filter(Service.id == service_id).first()
     if s: db.delete(s); db.commit()
-    return {"status": "success"}
+    return {"status": "deleted"}
 
+# جلب الخدمات
 @app.get("/business/{bid}/services")
 def get_services(bid: int, db: Session = Depends(get_db)):
     return db.query(Service).filter(Service.business_id == bid).all()
 
+# جلب خدمات الزبون
 @app.get("/shop/{slug}/services")
 def get_shop_services(slug: str, db: Session = Depends(get_db)):
     bus = db.query(Business).filter(Business.slug == slug).first()
@@ -95,11 +98,22 @@ def get_shop_services(slug: str, db: Session = Depends(get_db)):
     services = db.query(Service).filter(Service.business_id == bus.id).all()
     return {"shop_name": bus.name, "services": services, "business_id": bus.id}
 
+# جلب الحجوزات مع التفاصيل الكاملة
 @app.get("/business/{bid}/bookings")
 def get_bookings(bid: int, db: Session = Depends(get_db)):
-    res = db.query(Booking, Service).join(Service).filter(Booking.business_id == bid).all()
-    return [{"id":b.id, "customer_name":b.customer_name, "customer_phone": b.customer_phone, "service_name":s.name, "booking_date":str(b.booking_date), "booking_time":str(b.booking_time)} for b,s in res]
+    res = db.query(Booking, Service).join(Service).filter(Booking.business_id == bid).order_by(Booking.booking_date.desc(), Booking.booking_time.desc()).all()
+    return [{
+        "id":b.id, 
+        "customer_name":b.customer_name, 
+        "customer_phone": b.customer_phone, 
+        "service_name":s.name, 
+        "price": s.price,  # القيمة
+        "booking_date":str(b.booking_date), 
+        "booking_time":str(b.booking_time),
+        "status": b.status
+    } for b,s in res]
 
+# إنشاء حجز (بدون واتساب)
 @app.post("/book-appointment/")
 def book(req: BookingReq, db: Session = Depends(get_db)):
     b_date = datetime.datetime.strptime(req.booking_date, "%Y-%m-%d").date()
@@ -108,6 +122,16 @@ def book(req: BookingReq, db: Session = Depends(get_db)):
     db.add(new_b); db.commit()
     return {"status": "success"}
 
+# إلغاء حجز
+@app.put("/bookings/{booking_id}/cancel")
+def cancel_booking(booking_id: int, db: Session = Depends(get_db)):
+    b = db.query(Booking).filter(Booking.id == booking_id).first()
+    if b: 
+        b.status = "cancelled"
+        db.commit()
+    return {"status": "cancelled"}
+
+# عرض الصفحات
 @app.get("/login")
 def gui_login(): return FileResponse('login.html')
 @app.get("/admin")

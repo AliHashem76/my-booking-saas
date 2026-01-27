@@ -3,95 +3,286 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة تحكم Ali Salon</title>
+    <title>لوحة التحكم</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); margin: 0; padding: 20px; color: #444; min-height: 100vh; }
-        .container { max-width: 900px; margin: auto; }
-        .card { background: #fff; padding: 25px; border-radius: 20px; margin-bottom: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); }
+        :root {
+            --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --glass-bg: rgba(255, 255, 255, 0.95);
+            --primary: #6c5ce7;
+            --text: #2d3436;
+            --danger: #ff7675;
+            --success: #00b894;
+            --warning: #fdcb6e;
+        }
+
+        body { font-family: 'Cairo', sans-serif; background: var(--bg-gradient); margin: 0; padding: 20px; min-height: 100vh; color: var(--text); }
+        
+        .container { max-width: 1000px; margin: auto; }
+        
+        /* البطاقات الزجاجية */
+        .card {
+            background: var(--glass-bg);
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            backdrop-filter: blur(4px);
+            margin-bottom: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            transition: transform 0.3s ease;
+        }
+        .card:hover { transform: translateY(-5px); }
+
         .header { display: flex; justify-content: space-between; align-items: center; }
-        h3 { color: #5f27cd; border-bottom: 2px solid #f1f2f6; padding-bottom: 10px; }
-        .form-group { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px; }
-        input { background: #f8f9fa; border: 1px solid #ddd; padding: 12px; border-radius: 10px; flex: 1; min-width: 140px; }
-        button { padding: 12px 25px; border-radius: 10px; cursor: pointer; font-weight: bold; border: none; transition: 0.3s; }
-        .btn-add { background: #5f27cd; color: white; }
-        .btn-logout { background: #ee5253; color: white; }
-        .btn-del { background: #ff4757; color: white; padding: 5px 12px; font-size: 13px; }
+        h2, h3 { margin: 0; color: var(--primary); }
+        
+        /* الأزرار */
+        button { border: none; padding: 10px 20px; border-radius: 12px; font-family: 'Cairo', sans-serif; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: #5649c0; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
+        .btn-sm { padding: 5px 10px; font-size: 0.85rem; margin: 2px; }
+
+        /* النماذج */
+        .form-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 15px; }
+        input { flex: 1; padding: 12px; border: 2px solid #dfe6e9; border-radius: 12px; font-family: 'Cairo', sans-serif; outline: none; transition: 0.3s; }
+        input:focus { border-color: var(--primary); }
+
+        /* الجداول */
+        .table-container { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th { background: #f1f2f6; color: #5f27cd; padding: 15px; text-align: center; }
-        td { padding: 15px; border-bottom: 1px solid #f1f2f6; text-align: center; background: white; }
+        th { background: #f1f2f6; padding: 15px; color: var(--primary); font-weight: bold; }
+        td { padding: 15px; border-bottom: 1px solid #dfe6e9; text-align: center; }
+        tr:last-child td { border-bottom: none; }
+        
+        /* حالة الحجز */
+        .status-badge { padding: 5px 10px; border-radius: 20px; font-size: 0.8rem; color: white; }
+        .status-confirmed { background: var(--success); }
+        .status-cancelled { background: var(--danger); }
+
     </style>
 </head>
 <body>
+
 <div class="container">
     <div class="card header">
-        <h2 id="nameTag">لوحة التحكم</h2>
-        <div>
-            <button class="btn-logout" onclick="logout()">خروج</button>
+        <h2 id="txt-welcome">لوحة التحكم</h2>
+        <div style="display:flex; gap:10px">
+            <button class="btn-outline" onclick="toggleLang()" id="btn-lang">English</button>
+            <button class="btn-danger" onclick="logout()" id="btn-logout">خروج</button>
         </div>
     </div>
+
     <div class="card">
-        <h3>➕ إضافة خدمة</h3>
-        <div class="form-group">
-            <input type="text" id="sName" placeholder="اسم الخدمة">
+        <h3 id="txt-add-service">➕ إضافة / تعديل خدمة</h3>
+        <div class="form-row">
+            <input type="hidden" id="serviceId"> <input type="text" id="sName" placeholder="اسم الخدمة">
             <input type="number" id="sPrice" placeholder="السعر ($)">
             <input type="number" id="sDur" placeholder="المدة (دقيقة)">
-            <button class="btn-add" onclick="addS()">حفظ</button>
+            <button class="btn-primary" onclick="saveService()" id="btn-save">حفظ الخدمة</button>
+            <button class="btn-danger" onclick="resetForm()" id="btn-cancel-edit" style="display:none;">إلغاء</button>
         </div>
     </div>
+
     <div class="card">
-        <h3>📋 الخدمات الحالية</h3>
-        <table>
-            <thead><tr><th>الخدمة</th><th>السعر</th><th>المدة</th><th>إجراء</th></tr></thead>
-            <tbody id="sTableBody"></tbody>
-        </table>
+        <h3 id="txt-services-list">📋 قائمة الخدمات</h3>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th id="th-s-name">الخدمة</th>
+                        <th id="th-s-price">السعر</th>
+                        <th id="th-s-dur">المدة</th>
+                        <th id="th-s-action">إجراءات</th>
+                    </tr>
+                </thead>
+                <tbody id="servicesBody"></tbody>
+            </table>
+        </div>
     </div>
+
     <div class="card">
-        <h3>📅 الحجوزات</h3>
-        <table id="bTable">
-            <thead><tr><th>الزبون</th><th>الخدمة</th><th>الموعد</th></tr></thead>
-            <tbody id="bTableBody"></tbody>
-        </table>
+        <h3 id="txt-bookings">📅 الحجوزات</h3>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th id="th-b-name">الزبون</th>
+                        <th id="th-b-phone">الهاتف</th>
+                        <th id="th-b-service">الخدمة</th>
+                        <th id="th-b-price">القيمة</th>
+                        <th id="th-b-date">اليوم والوقت</th>
+                        <th id="th-b-status">الحالة</th>
+                        <th id="th-b-action">إجراء</th>
+                    </tr>
+                </thead>
+                <tbody id="bookingsBody"></tbody>
+            </table>
+        </div>
     </div>
 </div>
+
 <script>
     const bid = localStorage.getItem('business_id');
     if (!bid) window.location.replace('/login');
-    document.getElementById('nameTag').innerText = localStorage.getItem('business_name');
+    
+    // قاموس الترجمة
+    const translations = {
+        ar: {
+            welcome: `لوحة تحكم ${localStorage.getItem('business_name')}`, logout: "خروج", lang: "English",
+            addS: "➕ إضافة / تعديل خدمة", sName: "اسم الخدمة", sPrice: "السعر ($)", sDur: "المدة (دقيقة)", save: "حفظ الخدمة", cancel: "إلغاء",
+            sList: "📋 قائمة الخدمات", thName: "الخدمة", thPrice: "السعر", thDur: "المدة", thAction: "إجراءات", edit: "تعديل", del: "حذف",
+            books: "📅 الحجوزات", cName: "الزبون", cPhone: "الهاتف", bServ: "الخدمة", bVal: "القيمة", bDate: "اليوم والوقت", bStat: "الحالة", 
+            confirm: "مؤكد", cancelStat: "ملغى", cancelBtn: "إلغاء الحجز",
+            confirmDel: "هل أنت متأكد من الحذف؟", confirmCancel: "هل أنت متأكد من إلغاء الحجز؟"
+        },
+        en: {
+            welcome: `Dashboard: ${localStorage.getItem('business_name')}`, logout: "Logout", lang: "العربية",
+            addS: "➕ Add / Edit Service", sName: "Service Name", sPrice: "Price ($)", sDur: "Duration (min)", save: "Save Service", cancel: "Cancel",
+            sList: "📋 Services List", thName: "Service", thPrice: "Price", thDur: "Duration", thAction: "Actions", edit: "Edit", del: "Delete",
+            books: "📅 Bookings", cName: "Customer", cPhone: "Phone", bServ: "Service", bVal: "Value", bDate: "Date & Time", bStat: "Status",
+            confirm: "Confirmed", cancelStat: "Cancelled", cancelBtn: "Cancel Booking",
+            confirmDel: "Are you sure to delete?", confirmCancel: "Are you sure to cancel booking?"
+        }
+    };
 
-    async function loadData() {
-        const sRes = await fetch(`/business/${bid}/services`);
-        const services = await sRes.json();
-        document.getElementById('sTableBody').innerHTML = services.map(s => `
-            <tr><td>${s.name}</td><td>${s.price}$</td><td>${s.duration} د</td>
-            <td><button class="btn-del" onclick="deleteS(${s.id})">حذف</button></td></tr>
-        `).join('');
+    let curLang = 'ar';
 
-        const bRes = await fetch(`/business/${bid}/bookings`);
-        const bookings = await bRes.json();
-        document.getElementById('bTableBody').innerHTML = bookings.map(b => `
-            <tr><td>${b.customer_name}<br><small>${b.customer_phone}</small></td>
-            <td>${b.service_name}</td><td>${b.booking_date} ${b.booking_time}</td></tr>
-        `).join('');
+    function toggleLang() {
+        curLang = curLang === 'ar' ? 'en' : 'ar';
+        updateTexts();
     }
 
-    async function addS() {
-        await fetch('/add-service/', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ business_id: parseInt(bid), name: document.getElementById('sName').value, duration: parseInt(document.getElementById('sDur').value), price: parseFloat(document.getElementById('sPrice').value) })
-        });
+    function updateTexts() {
+        const t = translations[curLang];
+        document.dir = curLang === 'ar' ? 'rtl' : 'ltr';
+        
+        // تحديث النصوص
+        document.getElementById('txt-welcome').innerText = t.welcome;
+        document.getElementById('btn-logout').innerText = t.logout;
+        document.getElementById('btn-lang').innerText = t.lang;
+        document.getElementById('txt-add-service').innerText = t.addS;
+        document.getElementById('sName').placeholder = t.sName;
+        document.getElementById('sPrice').placeholder = t.sPrice;
+        document.getElementById('sDur').placeholder = t.sDur;
+        document.getElementById('btn-save').innerText = t.save;
+        document.getElementById('btn-cancel-edit').innerText = t.cancel;
+        document.getElementById('txt-services-list').innerText = t.sList;
+        document.getElementById('th-s-name').innerText = t.thName;
+        document.getElementById('th-s-price').innerText = t.thPrice;
+        document.getElementById('th-s-dur').innerText = t.thDur;
+        document.getElementById('th-s-action').innerText = t.thAction;
+        document.getElementById('txt-bookings').innerText = t.books;
+        document.getElementById('th-b-name').innerText = t.cName;
+        document.getElementById('th-b-phone').innerText = t.cPhone;
+        document.getElementById('th-b-service').innerText = t.bServ;
+        document.getElementById('th-b-price').innerText = t.bVal;
+        document.getElementById('th-b-date').innerText = t.bDate;
+        document.getElementById('th-b-status').innerText = t.bStat;
+        document.getElementById('th-b-action').innerText = t.thAction;
+
+        // إعادة تحميل البيانات لتحديث نصوص الجدول
         loadData();
     }
 
-    async function deleteS(id) {
-        if(confirm("حذف الخدمة؟")) {
+    async function loadData() {
+        const t = translations[curLang];
+        
+        // جلب الخدمات
+        const sRes = await fetch(`/business/${bid}/services`);
+        const services = await sRes.json();
+        document.getElementById('servicesBody').innerHTML = services.map(s => `
+            <tr>
+                <td>${s.name}</td>
+                <td>${s.price}$</td>
+                <td>${s.duration} m</td>
+                <td>
+                    <button class="btn-primary btn-sm" onclick="editService('${s.id}', '${s.name}', '${s.price}', '${s.duration}')">${t.edit}</button>
+                    <button class="btn-danger btn-sm" onclick="deleteService(${s.id})">${t.del}</button>
+                </td>
+            </tr>
+        `).join('');
+
+        // جلب الحجوزات
+        const bRes = await fetch(`/business/${bid}/bookings`);
+        const bookings = await bRes.json();
+        document.getElementById('bookingsBody').innerHTML = bookings.map(b => `
+            <tr>
+                <td>${b.customer_name}</td>
+                <td>${b.customer_phone}</td>
+                <td>${b.service_name}</td>
+                <td style="color:var(--success); font-weight:bold">${b.price}$</td>
+                <td>${b.booking_date} <br> ${b.booking_time}</td>
+                <td><span class="status-badge ${b.status === 'confirmed' ? 'status-confirmed' : 'status-cancelled'}">
+                    ${b.status === 'confirmed' ? t.confirm : t.cancelStat}
+                </span></td>
+                <td>
+                    ${b.status === 'confirmed' ? `<button class="btn-danger btn-sm" onclick="cancelBooking(${b.id})">${t.cancelBtn}</button>` : '-'}
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    // حفظ (إضافة أو تعديل)
+    async function saveService() {
+        const id = document.getElementById('serviceId').value;
+        const name = document.getElementById('sName').value;
+        const price = document.getElementById('sPrice').value;
+        const dur = document.getElementById('sDur').value;
+        
+        if(!name || !price || !dur) return;
+
+        const endpoint = id ? `/services/${id}` : '/add-service/';
+        const method = id ? 'PUT' : 'POST';
+
+        await fetch(endpoint, {
+            method: method,
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ business_id: parseInt(bid), name, price: parseFloat(price), duration: parseInt(dur) })
+        });
+
+        resetForm();
+        loadData();
+    }
+
+    // تجهيز الفورم للتعديل
+    function editService(id, name, price, dur) {
+        document.getElementById('serviceId').value = id;
+        document.getElementById('sName').value = name;
+        document.getElementById('sPrice').value = price;
+        document.getElementById('sDur').value = dur;
+        document.getElementById('btn-save').innerText = curLang === 'ar' ? "تحديث الخدمة" : "Update Service";
+        document.getElementById('btn-cancel-edit').style.display = 'block';
+    }
+
+    function resetForm() {
+        document.getElementById('serviceId').value = '';
+        document.getElementById('sName').value = '';
+        document.getElementById('sPrice').value = '';
+        document.getElementById('sDur').value = '';
+        document.getElementById('btn-save').innerText = translations[curLang].save;
+        document.getElementById('btn-cancel-edit').style.display = 'none';
+    }
+
+    async function deleteService(id) {
+        if(confirm(translations[curLang].confirmDel)) {
             await fetch(`/services/${id}`, { method: 'DELETE' });
             loadData();
         }
     }
 
+    async function cancelBooking(id) {
+        if(confirm(translations[curLang].confirmCancel)) {
+            await fetch(`/bookings/${id}/cancel`, { method: 'PUT' });
+            loadData();
+        }
+    }
+
     function logout() { localStorage.clear(); window.location.replace('/login'); }
-    window.onload = loadData;
+    
+    // تشغيل عند البدء
+    window.onload = () => { updateTexts(); };
 </script>
 </body>
 </html>
