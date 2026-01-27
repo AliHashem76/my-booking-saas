@@ -15,12 +15,15 @@
         td { padding: 15px; border-bottom: 1px solid #0f3460; }
         
         button { border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-family: 'Cairo'; font-weight: bold; margin-left: 5px; }
+        .btn-add { background: #00b894; color: white; } /* زر أخضر للإضافة */
         .btn-del { background: #e94560; color: white; }
         .btn-edit { background: #0f3460; color: white; border: 1px solid #e94560; }
         
+        /* النوافذ المنبثقة */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; }
-        .modal-content { background: #16213e; padding: 30px; border-radius: 10px; width: 300px; text-align: center; border: 1px solid #e94560; }
-        input { width: 100%; padding: 10px; margin: 10px 0; background: #0f3460; border: none; color: white; border-radius: 5px; box-sizing: border-box; }
+        .modal-content { background: #16213e; padding: 30px; border-radius: 10px; width: 350px; text-align: center; border: 1px solid #e94560; }
+        input { width: 100%; padding: 12px; margin: 10px 0; background: #0f3460; border: none; color: white; border-radius: 5px; box-sizing: border-box; }
+        label { display: block; text-align: right; margin-bottom: 5px; color: #ccc; font-size: 0.9em; }
     </style>
 </head>
 <body>
@@ -29,6 +32,7 @@
     <div class="header">
         <h1>👑 المالك (Super Admin)</h1>
         <div>
+            <button class="btn-add" onclick="openAddModal()">➕ إضافة محل</button>
             <button onclick="loadAll()" style="background:#0f3460; color:white">تحديث</button>
             <button onclick="logout()" style="background:#e94560; color:white">خروج</button>
         </div>
@@ -39,7 +43,7 @@
             <tr>
                 <th>ID</th>
                 <th>اسم المحل</th>
-                <th>Slug</th>
+                <th>Slug (الرابط)</th>
                 <th>هاتف المالك</th>
                 <th>كلمة المرور</th>
                 <th>إجراءات</th>
@@ -47,6 +51,27 @@
         </thead>
         <tbody id="list"></tbody>
     </table>
+</div>
+
+<div id="addModal" class="modal">
+    <div class="modal-content">
+        <h3 style="color:#00b894">➕ إنشاء محل جديد</h3>
+        
+        <label>اسم المحل (للعرض)</label>
+        <input type="text" id="newNames" placeholder="مثال: صالون علي">
+        
+        <label>الرابط المميز (Slug - إنجليزي فقط)</label>
+        <input type="text" id="newSlug" placeholder="مثال: ali-salon">
+        
+        <label>هاتف المالك (للدخول)</label>
+        <input type="text" id="newPhone" placeholder="مثال: 96170...">
+        
+        <label>كلمة المرور</label>
+        <input type="text" id="newPass" placeholder="123456">
+        
+        <button class="btn-add" onclick="createBusiness()">إنشاء المحل</button>
+        <button class="btn-del" onclick="closeAddModal()">إلغاء</button>
+    </div>
 </div>
 
 <div id="editModal" class="modal">
@@ -57,30 +82,19 @@
         <input type="text" id="editPhone" placeholder="هاتف المالك">
         <input type="text" id="editPass" placeholder="كلمة المرور">
         <button class="btn-edit" onclick="saveEdit()">حفظ التعديلات</button>
-        <button class="btn-del" onclick="closeModal()">إلغاء</button>
+        <button class="btn-del" onclick="closeEditModal()">إلغاء</button>
     </div>
 </div>
 
 <script>
-    // 1. التحقق من المفتاح عند الفتح
     const token = sessionStorage.getItem('super_token');
-    if (!token) {
-        window.location.href = '/super-login';
-    }
+    if (!token) window.location.href = '/super-login';
 
     async function loadAll() {
-        // 2. إرسال المفتاح في الهيدر (Header)
-        const res = await fetch('/api/super/businesses', {
-            headers: { 'x-super-token': token }
-        });
-        
-        if (res.status === 401) {
-            alert("جلسة غير مصرحة! أعد الدخول.");
-            logout();
-            return;
-        }
-
+        const res = await fetch('/api/super/businesses', { headers: { 'x-super-token': token } });
+        if (res.status === 401) return logout();
         const data = await res.json();
+        
         document.getElementById('list').innerHTML = data.map(b => `
             <tr>
                 <td>${b.id}</td>
@@ -96,12 +110,47 @@
         `).join('');
     }
 
+    // --- وظائف الإضافة ---
+    function openAddModal() { document.getElementById('addModal').style.display = 'flex'; }
+    function closeAddModal() { document.getElementById('addModal').style.display = 'none'; }
+
+    async function createBusiness() {
+        const body = {
+            name: document.getElementById('newNames').value,
+            slug: document.getElementById('newSlug').value,
+            owner_phone: document.getElementById('newPhone').value,
+            password: document.getElementById('newPass').value
+        };
+
+        if(!body.name || !body.slug || !body.owner_phone || !body.password) {
+            alert("يرجى ملء جميع الحقول!"); return;
+        }
+
+        const res = await fetch('/api/super/businesses', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-super-token': token },
+            body: JSON.stringify(body)
+        });
+
+        if(res.ok) {
+            alert("تم إنشاء المحل بنجاح! 🎉");
+            closeAddModal();
+            loadAll();
+            // تفريغ الحقول
+            document.getElementById('newNames').value = '';
+            document.getElementById('newSlug').value = '';
+            document.getElementById('newPhone').value = '';
+            document.getElementById('newPass').value = '';
+        } else {
+            const err = await res.json();
+            alert("خطأ: " + err.detail); // غالباً لأن الـ Slug مستخدم
+        }
+    }
+
+    // --- وظائف التعديل والحذف ---
     async function delBusiness(id) {
-        if(confirm("تحذير! حذف المحل سيحذف كل بياناته. متأكد؟")) {
-            await fetch(`/api/super/businesses/${id}`, { 
-                method: 'DELETE',
-                headers: { 'x-super-token': token }
-            });
+        if(confirm("هل أنت متأكد من حذف هذا المحل وجميع بياناته؟")) {
+            await fetch(`/api/super/businesses/${id}`, { method: 'DELETE', headers: { 'x-super-token': token } });
             loadAll();
         }
     }
@@ -113,32 +162,24 @@
         document.getElementById('editPass').value = pass;
         document.getElementById('editModal').style.display = 'flex';
     }
-    function closeModal() { document.getElementById('editModal').style.display = 'none'; }
+    function closeEditModal() { document.getElementById('editModal').style.display = 'none'; }
     
     async function saveEdit() {
         const id = document.getElementById('editId').value;
-        const body = {
-            name: document.getElementById('editName').value,
-            owner_phone: document.getElementById('editPhone').value,
-            password: document.getElementById('editPass').value
-        };
         await fetch(`/api/super/businesses/${id}`, {
             method: 'PUT',
-            headers: { 
-                'Content-Type': 'application/json',
-                'x-super-token': token 
-            },
-            body: JSON.stringify(body)
+            headers: { 'Content-Type': 'application/json', 'x-super-token': token },
+            body: JSON.stringify({
+                name: document.getElementById('editName').value,
+                owner_phone: document.getElementById('editPhone').value,
+                password: document.getElementById('editPass').value
+            })
         });
-        closeModal();
+        closeEditModal();
         loadAll();
     }
 
-    function logout() {
-        sessionStorage.removeItem('super_token');
-        window.location.href = '/super-login';
-    }
-
+    function logout() { sessionStorage.removeItem('super_token'); window.location.href = '/super-login'; }
     window.onload = loadAll;
 </script>
 

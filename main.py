@@ -9,14 +9,14 @@ from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, Date,
 from sqlalchemy.orm import sessionmaker, Session, declarative_base
 
 # ==========================================
-# 1. إعدادات قاعدة البيانات (Database Setup)
+# 1. إعدادات قاعدة البيانات (Database Config)
 # ==========================================
 DATABASE_URL = os.environ.get("DATABASE_URL")
-# تصحيح رابط Render ليعمل مع المكتبة الحديثة
+# تصحيح رابط Render ليعمل مع مكتبات بايثون الحديثة
 if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
-# استخدام الملف المحلي إذا لم نكن على السيرفر
+# استخدام SQLite كبديل محلي إذا لم نكن على السيرفر
 SQLALCHEMY_DATABASE_URL = DATABASE_URL if DATABASE_URL else "sqlite:///./saas.db"
 connect_args = {"check_same_thread": False} if "sqlite" in SQLALCHEMY_DATABASE_URL else {}
 
@@ -31,7 +31,7 @@ class Business(Base):
     __tablename__ = "businesses"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String)
-    slug = Column(String, unique=True, index=True) # الرابط المميز (ali-salon)
+    slug = Column(String, unique=True, index=True) # الرابط المميز (مثل: ali-salon)
     owner_phone = Column(String)
     password = Column(String)
 
@@ -54,11 +54,11 @@ class Booking(Base):
     booking_time = Column(Time)
     status = Column(String, default="confirmed") # confirmed, cancelled
 
-# إنشاء الجداول
+# إنشاء الجداول عند البدء
 Base.metadata.create_all(bind=engine)
 
 # ==========================================
-# 3. إعدادات التطبيق (App Config)
+# 3. إعدادات التطبيق (App Setup)
 # ==========================================
 app = FastAPI(title="SaaS Booking System")
 
@@ -69,7 +69,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# نماذج البيانات (Pydantic)
+# نماذج البيانات (Pydantic Schemas)
 class LoginReq(BaseModel):
     phone: str
     password: str
@@ -88,8 +88,15 @@ class BookingReq(BaseModel):
     booking_date: str
     booking_time: str
 
+# نماذج السوبر أدمن
 class BusinessUpdate(BaseModel):
     name: str
+    owner_phone: str
+    password: str
+
+class BusinessCreate(BaseModel):
+    name: str
+    slug: str
     owner_phone: str
     password: str
 
@@ -102,19 +109,18 @@ def get_db():
         db.close()
 
 # ==========================================
-# 4. روابط النظام (API Endpoints)
+# 4. الروابط العامة (Public & Business Admin)
 # ==========================================
 
-# --- تسجيل الدخول ---
+# --- تسجيل الدخول لأصحاب المحلات ---
 @app.post("/login")
 def login(req: LoginReq, db: Session = Depends(get_db)):
-    # البحث عن المحل برقم الهاتف وكلمة المرور
     b = db.query(Business).filter(Business.owner_phone == req.phone, Business.password == req.password).first()
     if not b:
-        raise HTTPException(status_code=400, detail="Wrong credentials")
+        raise HTTPException(status_code=400, detail="بيانات الدخول غير صحيحة")
     return {"status": "success", "business_id": b.id, "business_name": b.name}
 
-# --- إدارة الخدمات ---
+# --- إدارة الخدمات (إضافة - تعديل - حذف) ---
 @app.post("/add-service/")
 def add_service(req: ServiceReq, db: Session = Depends(get_db)):
     s = Service(business_id=req.business_id, name=req.name, duration=req.duration, price=req.price)
@@ -140,27 +146,26 @@ def delete_service(service_id: int, db: Session = Depends(get_db)):
         db.commit()
     return {"status": "deleted"}
 
-# جلب خدمات محل معين (للأدمن)
+# جلب الخدمات (للأدمن)
 @app.get("/business/{bid}/services")
 def get_services(bid: int, db: Session = Depends(get_db)):
     return db.query(Service).filter(Service.business_id == bid).all()
 
-# جلب خدمات محل معين (للزبون عبر الاسم المميز slug)
+# جلب الخدمات (للزبون عبر الرابط Slug)
 @app.get("/shop/{slug}/services")
 def get_shop_services(slug: str, db: Session = Depends(get_db)):
     bus = db.query(Business).filter(Business.slug == slug).first()
     if not bus:
-        raise HTTPException(status_code=404, detail="Shop not found")
+        raise HTTPException(status_code=404, detail="المتجر غير موجود")
     services = db.query(Service).filter(Service.business_id == bus.id).all()
     return {"shop_name": bus.name, "services": services, "business_id": bus.id}
 
 # --- إدارة الحجوزات ---
 @app.get("/business/{bid}/bookings")
 def get_bookings(bid: int, db: Session = Depends(get_db)):
-    # جلب الحجوزات مرتبة من الأحدث للأقدم
+    # جلب الحجوزات مع تفاصيل الخدمة (السعر والاسم)
     res = db.query(Booking, Service).join(Service).filter(Booking.business_id == bid).order_by(Booking.booking_date.desc(), Booking.booking_time.desc()).all()
     
-    # تنسيق البيانات لسهولة عرضها في الجدول
     return [{
         "id": b.id,
         "customer_name": b.customer_name,
@@ -174,6 +179,7 @@ def get_bookings(bid: int, db: Session = Depends(get_db)):
 
 @app.post("/book-appointment/")
 def book(req: BookingReq, db: Session = Depends(get_db)):
+    # تحويل النصوص إلى تواريخ
     b_date = datetime.datetime.strptime(req.booking_date, "%Y-%m-%d").date()
     b_time = datetime.datetime.strptime(req.booking_time, "%H:%M").time()
     
@@ -201,28 +207,51 @@ def cancel_booking(booking_id: int, db: Session = Depends(get_db)):
 # 5. السوبر أدمن (Super Admin) - المنطقة المحمية 🛡️
 # ==========================================
 
-MASTER_KEY = "AliKing2026"  # 🔑 كلمة سر المالك
+MASTER_KEY = "1,l/1D!8vfQ1C%!ZL@$dS/V!kbZp7uX:"  # 🔑 مفتاح الأمان (يمكنك تغييره)
 
 # دالة التحقق من المفتاح
 def verify_super(x_super_token: str = Header(None)):
     if x_super_token != MASTER_KEY:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        raise HTTPException(status_code=401, detail="غير مصرح بالدخول (مفتاح خاطئ)")
 
+# 1. عرض كل المحلات
 @app.get("/api/super/businesses")
 def get_all_businesses(db: Session = Depends(get_db), authorized: bool = Depends(verify_super)):
     return db.query(Business).all()
 
+# 2. إنشاء محل جديد (الطلب الجديد)
+@app.post("/api/super/businesses")
+def create_business_super(req: BusinessCreate, db: Session = Depends(get_db), authorized: bool = Depends(verify_super)):
+    # التأكد من عدم تكرار الرابط (Slug)
+    existing = db.query(Business).filter(Business.slug == req.slug).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="هذا الرابط (Slug) مستخدم من قبل")
+    
+    new_b = Business(
+        name=req.name,
+        slug=req.slug,
+        owner_phone=req.owner_phone,
+        password=req.password
+    )
+    db.add(new_b)
+    db.commit()
+    return {"status": "created", "id": new_b.id}
+
+# 3. حذف محل بالكامل
 @app.delete("/api/super/businesses/{bid}")
 def delete_business_super(bid: int, db: Session = Depends(get_db), authorized: bool = Depends(verify_super)):
-    # حذف كل شيء متعلق بالمحل (تنظيف شامل)
+    # تنظيف شامل: حذف الحجوزات والخدمات التابعة للمحل أولاً
     db.query(Booking).filter(Booking.business_id == bid).delete()
     db.query(Service).filter(Service.business_id == bid).delete()
+    
+    # حذف المحل
     b = db.query(Business).filter(Business.id == bid).first()
     if b:
         db.delete(b)
         db.commit()
     return {"status": "deleted"}
 
+# 4. تعديل بيانات محل
 @app.put("/api/super/businesses/{bid}")
 def update_business_super(bid: int, req: BusinessUpdate, db: Session = Depends(get_db), authorized: bool = Depends(verify_super)):
     b = db.query(Business).filter(Business.id == bid).first()
@@ -237,28 +266,22 @@ def update_business_super(bid: int, req: BusinessUpdate, db: Session = Depends(g
 # 6. عرض صفحات HTML
 # ==========================================
 @app.get("/")
-def read_root():
-    return FileResponse('login.html')
+def read_root(): return FileResponse('login.html')
 
 @app.get("/login")
-def read_login():
-    return FileResponse('login.html')
+def read_login(): return FileResponse('login.html')
 
 @app.get("/admin")
-def read_admin():
-    return FileResponse('admin.html')
+def read_admin(): return FileResponse('admin.html')
 
 @app.get("/booking")
-def read_booking():
-    return FileResponse('booking.html')
+def read_booking(): return FileResponse('booking.html')
 
 @app.get("/super-login")
-def read_super_login():
-    return FileResponse('super_login.html')
+def read_super_login(): return FileResponse('super_login.html')
 
 @app.get("/super-admin")
-def read_super_admin():
-    return FileResponse('super_admin.html')
+def read_super_admin(): return FileResponse('super_admin.html')
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
