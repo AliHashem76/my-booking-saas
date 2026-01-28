@@ -306,12 +306,3 @@ def read_super_admin(): return FileResponse('super_admin.html')
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
-
-from sqlalchemy import text
-
-@app.get("/force-reset-db")
-def reset_database(db: Session = Depends(get_db)):
-    # هذا الكود سيحذف كل الجداول ويعيد إنشاءها
-    Base.metadata.drop_all(bind=engine)
-    Base.metadata.create_all(bind=engine)
-    return {"status": "تم مسح قاعدة البيانات وإعادة بنائها بنجاح"}
