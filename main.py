@@ -9,14 +9,12 @@ from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, Date,
 from sqlalchemy.orm import sessionmaker, Session, declarative_base
 
 # ==========================================
-# 1. إعدادات قاعدة البيانات (Database Config)
+# 1. إعدادات قاعدة البيانات
 # ==========================================
 DATABASE_URL = os.environ.get("DATABASE_URL")
-# تصحيح رابط Render ليعمل مع مكتبات بايثون الحديثة
 if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
-# استخدام SQLite كبديل محلي إذا لم نكن على السيرفر
 SQLALCHEMY_DATABASE_URL = DATABASE_URL if DATABASE_URL else "sqlite:///./saas.db"
 connect_args = {"check_same_thread": False} if "sqlite" in SQLALCHEMY_DATABASE_URL else {}
 
@@ -31,9 +29,12 @@ class Business(Base):
     __tablename__ = "businesses"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String)
-    slug = Column(String, unique=True, index=True) # الرابط المميز (مثل: ali-salon)
+    slug = Column(String, unique=True, index=True)
     owner_phone = Column(String)
     password = Column(String)
+    # 🆕 أوقات الدوام
+    open_time = Column(Time, default=datetime.time(9, 0))
+    close_time = Column(Time, default=datetime.time(22, 0))
 
 class Service(Base):
     __tablename__ = "services"
@@ -52,13 +53,12 @@ class Booking(Base):
     customer_phone = Column(String)
     booking_date = Column(Date)
     booking_time = Column(Time)
-    status = Column(String, default="confirmed") # confirmed, cancelled
+    status = Column(String, default="confirmed") 
 
-# إنشاء الجداول عند البدء
 Base.metadata.create_all(bind=engine)
 
 # ==========================================
-# 3. إعدادات التطبيق (App Setup)
+# 3. إعدادات التطبيق
 # ==========================================
 app = FastAPI(title="SaaS Booking System")
 
@@ -69,7 +69,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# نماذج البيانات (Pydantic Schemas)
+# Pydantic Schemas
 class LoginReq(BaseModel):
     phone: str
     password: str
@@ -88,19 +88,19 @@ class BookingReq(BaseModel):
     booking_date: str
     booking_time: str
 
-# نماذج السوبر أدمن
-class BusinessUpdate(BaseModel):
-    name: str
-    owner_phone: str
-    password: str
-
 class BusinessCreate(BaseModel):
     name: str
     slug: str
     owner_phone: str
     password: str
+    open_time: str # "09:00"
+    close_time: str # "22:00"
 
-# دالة الاتصال بالقاعدة
+class BusinessUpdate(BaseModel):
+    name: str
+    owner_phone: str
+    password: str
+
 def get_db():
     db = SessionLocal()
     try:
@@ -109,10 +109,10 @@ def get_db():
         db.close()
 
 # ==========================================
-# 4. الروابط العامة (Public & Business Admin)
+# 4. الروابط (API Endpoints)
 # ==========================================
 
-# --- تسجيل الدخول لأصحاب المحلات ---
+# --- Login ---
 @app.post("/login")
 def login(req: LoginReq, db: Session = Depends(get_db)):
     b = db.query(Business).filter(Business.owner_phone == req.phone, Business.password == req.password).first()
@@ -120,7 +120,7 @@ def login(req: LoginReq, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="بيانات الدخول غير صحيحة")
     return {"status": "success", "business_id": b.id, "business_name": b.name}
 
-# --- إدارة الخدمات (إضافة - تعديل - حذف) ---
+# --- Services ---
 @app.post("/add-service/")
 def add_service(req: ServiceReq, db: Session = Depends(get_db)):
     s = Service(business_id=req.business_id, name=req.name, duration=req.duration, price=req.price)
@@ -146,12 +146,10 @@ def delete_service(service_id: int, db: Session = Depends(get_db)):
         db.commit()
     return {"status": "deleted"}
 
-# جلب الخدمات (للأدمن)
 @app.get("/business/{bid}/services")
 def get_services(bid: int, db: Session = Depends(get_db)):
     return db.query(Service).filter(Service.business_id == bid).all()
 
-# جلب الخدمات (للزبون عبر الرابط Slug)
 @app.get("/shop/{slug}/services")
 def get_shop_services(slug: str, db: Session = Depends(get_db)):
     bus = db.query(Business).filter(Business.slug == slug).first()
@@ -160,12 +158,10 @@ def get_shop_services(slug: str, db: Session = Depends(get_db)):
     services = db.query(Service).filter(Service.business_id == bus.id).all()
     return {"shop_name": bus.name, "services": services, "business_id": bus.id}
 
-# --- إدارة الحجوزات ---
+# --- Bookings (المنطقة الذكية 🔥) ---
 @app.get("/business/{bid}/bookings")
 def get_bookings(bid: int, db: Session = Depends(get_db)):
-    # جلب الحجوزات مع تفاصيل الخدمة (السعر والاسم)
     res = db.query(Booking, Service).join(Service).filter(Booking.business_id == bid).order_by(Booking.booking_date.desc(), Booking.booking_time.desc()).all()
-    
     return [{
         "id": b.id,
         "customer_name": b.customer_name,
@@ -177,12 +173,55 @@ def get_bookings(bid: int, db: Session = Depends(get_db)):
         "status": b.status
     } for b, s in res]
 
+@app.put("/bookings/{booking_id}/cancel")
+def cancel_booking(booking_id: int, db: Session = Depends(get_db)):
+    b = db.query(Booking).filter(Booking.id == booking_id).first()
+    if b:
+        b.status = "cancelled"
+        db.commit()
+    return {"status": "cancelled"}
+
 @app.post("/book-appointment/")
 def book(req: BookingReq, db: Session = Depends(get_db)):
-    # تحويل النصوص إلى تواريخ
+    # 1. تحويل البيانات
     b_date = datetime.datetime.strptime(req.booking_date, "%Y-%m-%d").date()
     b_time = datetime.datetime.strptime(req.booking_time, "%H:%M").time()
     
+    # 2. التحقق من المحل والخدمة
+    business = db.query(Business).filter(Business.id == req.business_id).first()
+    service = db.query(Service).filter(Service.id == req.service_id).first()
+    if not business or not service: raise HTTPException(404, "بيانات غير صحيحة")
+
+    # 3. حساب مدة الحجز
+    start_dt = datetime.datetime.combine(b_date, b_time)
+    end_dt = start_dt + datetime.timedelta(minutes=service.duration)
+
+    # 4. 🛑 التحقق من الدوام (Hours Check)
+    open_dt = datetime.datetime.combine(b_date, business.open_time)
+    close_dt = datetime.datetime.combine(b_date, business.close_time)
+    
+    if start_dt < open_dt or end_dt > close_dt:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"عذراً، المحل يفتح من {business.open_time.strftime('%H:%M')} إلى {business.close_time.strftime('%H:%M')}. حجزك خارج الدوام."
+        )
+
+    # 5. 🛑 التحقق من التضارب (Overlap Check)
+    existing_bookings = db.query(Booking, Service).join(Service).filter(
+        Booking.business_id == req.business_id,
+        Booking.booking_date == b_date,
+        Booking.status == "confirmed"
+    ).all()
+
+    for exist_b, exist_s in existing_bookings:
+        e_start = datetime.datetime.combine(exist_b.booking_date, exist_b.booking_time)
+        e_end = e_start + datetime.timedelta(minutes=exist_s.duration)
+        
+        # معادلة التقاطع: (StartA < EndB) and (StartB < EndA)
+        if start_dt < e_end and e_start < end_dt:
+             raise HTTPException(status_code=400, detail="عذراً، هذا الوقت محجوز مسبقاً (يوجد تضارب).")
+
+    # 6. الحفظ
     new_b = Booking(
         business_id=req.business_id,
         service_id=req.service_id,
@@ -195,63 +234,52 @@ def book(req: BookingReq, db: Session = Depends(get_db)):
     db.commit()
     return {"status": "success"}
 
-@app.put("/bookings/{booking_id}/cancel")
-def cancel_booking(booking_id: int, db: Session = Depends(get_db)):
-    b = db.query(Booking).filter(Booking.id == booking_id).first()
-    if b:
-        b.status = "cancelled"
-        db.commit()
-    return {"status": "cancelled"}
+# --- Super Admin ---
+MASTER_KEY = "AliKing2026"
 
-# ==========================================
-# 5. السوبر أدمن (Super Admin) - المنطقة المحمية 🛡️
-# ==========================================
-
-MASTER_KEY = "1,l/1D!8vfQ1C%!ZL@$dS/V!kbZp7uX:"  # 🔑 مفتاح الأمان (يمكنك تغييره)
-
-# دالة التحقق من المفتاح
 def verify_super(x_super_token: str = Header(None)):
     if x_super_token != MASTER_KEY:
-        raise HTTPException(status_code=401, detail="غير مصرح بالدخول (مفتاح خاطئ)")
+        raise HTTPException(status_code=401, detail="Unauthorized")
 
-# 1. عرض كل المحلات
 @app.get("/api/super/businesses")
 def get_all_businesses(db: Session = Depends(get_db), authorized: bool = Depends(verify_super)):
     return db.query(Business).all()
 
-# 2. إنشاء محل جديد (الطلب الجديد)
 @app.post("/api/super/businesses")
 def create_business_super(req: BusinessCreate, db: Session = Depends(get_db), authorized: bool = Depends(verify_super)):
-    # التأكد من عدم تكرار الرابط (Slug)
     existing = db.query(Business).filter(Business.slug == req.slug).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="هذا الرابط (Slug) مستخدم من قبل")
+    if existing: raise HTTPException(status_code=400, detail="Slug already taken")
     
+    # تحويل الأوقات
+    try:
+        o_time = datetime.datetime.strptime(req.open_time, "%H:%M").time()
+        c_time = datetime.datetime.strptime(req.close_time, "%H:%M").time()
+    except:
+        o_time = datetime.time(9,0)
+        c_time = datetime.time(22,0)
+
     new_b = Business(
         name=req.name,
         slug=req.slug,
         owner_phone=req.owner_phone,
-        password=req.password
+        password=req.password,
+        open_time=o_time,
+        close_time=c_time
     )
     db.add(new_b)
     db.commit()
     return {"status": "created", "id": new_b.id}
 
-# 3. حذف محل بالكامل
 @app.delete("/api/super/businesses/{bid}")
 def delete_business_super(bid: int, db: Session = Depends(get_db), authorized: bool = Depends(verify_super)):
-    # تنظيف شامل: حذف الحجوزات والخدمات التابعة للمحل أولاً
     db.query(Booking).filter(Booking.business_id == bid).delete()
     db.query(Service).filter(Service.business_id == bid).delete()
-    
-    # حذف المحل
     b = db.query(Business).filter(Business.id == bid).first()
     if b:
         db.delete(b)
         db.commit()
     return {"status": "deleted"}
 
-# 4. تعديل بيانات محل
 @app.put("/api/super/businesses/{bid}")
 def update_business_super(bid: int, req: BusinessUpdate, db: Session = Depends(get_db), authorized: bool = Depends(verify_super)):
     b = db.query(Business).filter(Business.id == bid).first()
@@ -262,24 +290,17 @@ def update_business_super(bid: int, req: BusinessUpdate, db: Session = Depends(g
     db.commit()
     return {"status": "updated"}
 
-# ==========================================
-# 6. عرض صفحات HTML
-# ==========================================
+# --- Serving HTML ---
 @app.get("/")
 def read_root(): return FileResponse('login.html')
-
 @app.get("/login")
 def read_login(): return FileResponse('login.html')
-
 @app.get("/admin")
 def read_admin(): return FileResponse('admin.html')
-
 @app.get("/booking")
 def read_booking(): return FileResponse('booking.html')
-
 @app.get("/super-login")
 def read_super_login(): return FileResponse('super_login.html')
-
 @app.get("/super-admin")
 def read_super_admin(): return FileResponse('super_admin.html')
 

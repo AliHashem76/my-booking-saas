@@ -6,7 +6,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Cairo', sans-serif; background: #1a1a2e; color: white; padding: 20px; }
-        .container { max-width: 1000px; margin: auto; }
+        .container { max-width: 1100px; margin: auto; }
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 2px solid #e94560; padding-bottom: 10px; }
         h1 { color: #e94560; margin: 0; }
         
@@ -15,15 +15,16 @@
         td { padding: 15px; border-bottom: 1px solid #0f3460; }
         
         button { border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-family: 'Cairo'; font-weight: bold; margin-left: 5px; }
-        .btn-add { background: #00b894; color: white; } /* زر أخضر للإضافة */
+        .btn-add { background: #00b894; color: white; }
         .btn-del { background: #e94560; color: white; }
         .btn-edit { background: #0f3460; color: white; border: 1px solid #e94560; }
         
-        /* النوافذ المنبثقة */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; }
-        .modal-content { background: #16213e; padding: 30px; border-radius: 10px; width: 350px; text-align: center; border: 1px solid #e94560; }
-        input { width: 100%; padding: 12px; margin: 10px 0; background: #0f3460; border: none; color: white; border-radius: 5px; box-sizing: border-box; }
-        label { display: block; text-align: right; margin-bottom: 5px; color: #ccc; font-size: 0.9em; }
+        /* Modal */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: #16213e; padding: 30px; border-radius: 10px; width: 400px; text-align: center; border: 1px solid #e94560; }
+        input { width: 100%; padding: 10px; margin: 8px 0; background: #0f3460; border: none; color: white; border-radius: 5px; box-sizing: border-box; }
+        label { display: block; text-align: right; margin-top: 10px; color: #ccc; font-size: 0.9em; }
+        .row { display: flex; gap: 10px; }
     </style>
 </head>
 <body>
@@ -43,9 +44,10 @@
             <tr>
                 <th>ID</th>
                 <th>اسم المحل</th>
-                <th>Slug (الرابط)</th>
-                <th>هاتف المالك</th>
+                <th>Slug</th>
+                <th>الهاتف</th>
                 <th>كلمة المرور</th>
+                <th>الدوام</th>
                 <th>إجراءات</th>
             </tr>
         </thead>
@@ -57,31 +59,35 @@
     <div class="modal-content">
         <h3 style="color:#00b894">➕ إنشاء محل جديد</h3>
         
-        <label>اسم المحل (للعرض)</label>
-        <input type="text" id="newNames" placeholder="مثال: صالون علي">
+        <input type="text" id="newNames" placeholder="اسم المحل (للعرض)">
+        <input type="text" id="newSlug" placeholder="Slug (رابط إنجليزي)">
+        <input type="text" id="newPhone" placeholder="هاتف المالك">
+        <input type="text" id="newPass" placeholder="كلمة المرور">
         
-        <label>الرابط المميز (Slug - إنجليزي فقط)</label>
-        <input type="text" id="newSlug" placeholder="مثال: ali-salon">
+        <div class="row">
+            <div style="flex:1">
+                <label>يفتح الساعة</label>
+                <input type="time" id="newOpen" value="09:00">
+            </div>
+            <div style="flex:1">
+                <label>يغلق الساعة</label>
+                <input type="time" id="newClose" value="22:00">
+            </div>
+        </div>
         
-        <label>هاتف المالك (للدخول)</label>
-        <input type="text" id="newPhone" placeholder="مثال: 96170...">
-        
-        <label>كلمة المرور</label>
-        <input type="text" id="newPass" placeholder="123456">
-        
-        <button class="btn-add" onclick="createBusiness()">إنشاء المحل</button>
-        <button class="btn-del" onclick="closeAddModal()">إلغاء</button>
+        <button class="btn-add" onclick="createBusiness()" style="margin-top:15px; width:100%">إنشاء المحل</button>
+        <button class="btn-del" onclick="closeAddModal()" style="margin-top:5px; width:100%">إلغاء</button>
     </div>
 </div>
 
 <div id="editModal" class="modal">
     <div class="modal-content">
-        <h3>تعديل بيانات المحل</h3>
+        <h3>تعديل بيانات</h3>
         <input type="hidden" id="editId">
-        <input type="text" id="editName" placeholder="اسم المحل">
-        <input type="text" id="editPhone" placeholder="هاتف المالك">
+        <input type="text" id="editName" placeholder="الاسم">
+        <input type="text" id="editPhone" placeholder="الهاتف">
         <input type="text" id="editPass" placeholder="كلمة المرور">
-        <button class="btn-edit" onclick="saveEdit()">حفظ التعديلات</button>
+        <button class="btn-edit" onclick="saveEdit()">حفظ</button>
         <button class="btn-del" onclick="closeEditModal()">إلغاء</button>
     </div>
 </div>
@@ -102,6 +108,7 @@
                 <td style="color:#e94560">${b.slug}</td>
                 <td>${b.owner_phone}</td>
                 <td>${b.password}</td>
+                <td>${b.open_time || ''} - ${b.close_time || ''}</td>
                 <td>
                     <button class="btn-edit" onclick="openEdit(${b.id}, '${b.name}', '${b.owner_phone}', '${b.password}')">تعديل</button>
                     <button class="btn-del" onclick="delBusiness(${b.id})">حذف</button>
@@ -110,7 +117,6 @@
         `).join('');
     }
 
-    // --- وظائف الإضافة ---
     function openAddModal() { document.getElementById('addModal').style.display = 'flex'; }
     function closeAddModal() { document.getElementById('addModal').style.display = 'none'; }
 
@@ -119,12 +125,12 @@
             name: document.getElementById('newNames').value,
             slug: document.getElementById('newSlug').value,
             owner_phone: document.getElementById('newPhone').value,
-            password: document.getElementById('newPass').value
+            password: document.getElementById('newPass').value,
+            open_time: document.getElementById('newOpen').value,
+            close_time: document.getElementById('newClose').value
         };
 
-        if(!body.name || !body.slug || !body.owner_phone || !body.password) {
-            alert("يرجى ملء جميع الحقول!"); return;
-        }
+        if(!body.name || !body.slug) { alert("أكمل البيانات"); return; }
 
         const res = await fetch('/api/super/businesses', {
             method: 'POST',
@@ -133,23 +139,14 @@
         });
 
         if(res.ok) {
-            alert("تم إنشاء المحل بنجاح! 🎉");
-            closeAddModal();
-            loadAll();
-            // تفريغ الحقول
-            document.getElementById('newNames').value = '';
-            document.getElementById('newSlug').value = '';
-            document.getElementById('newPhone').value = '';
-            document.getElementById('newPass').value = '';
+            alert("تم الإنشاء!"); closeAddModal(); loadAll();
         } else {
-            const err = await res.json();
-            alert("خطأ: " + err.detail); // غالباً لأن الـ Slug مستخدم
+            const err = await res.json(); alert("خطأ: " + err.detail);
         }
     }
 
-    // --- وظائف التعديل والحذف ---
     async function delBusiness(id) {
-        if(confirm("هل أنت متأكد من حذف هذا المحل وجميع بياناته؟")) {
+        if(confirm("حذف نهائي؟")) {
             await fetch(`/api/super/businesses/${id}`, { method: 'DELETE', headers: { 'x-super-token': token } });
             loadAll();
         }
@@ -175,13 +172,11 @@
                 password: document.getElementById('editPass').value
             })
         });
-        closeEditModal();
-        loadAll();
+        closeEditModal(); loadAll();
     }
 
     function logout() { sessionStorage.removeItem('super_token'); window.location.href = '/super-login'; }
     window.onload = loadAll;
 </script>
-
 </body>
 </html>

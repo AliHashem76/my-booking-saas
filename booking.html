@@ -1,136 +1,166 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>حجز موعد</title>
+    <title>Booking System</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Cairo', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px;
+        :root { --primary: #6c5ce7; --bg: #0f0f1a; --glass: rgba(255, 255, 255, 0.05); }
+        body { margin: 0; font-family: 'Cairo', sans-serif; background: var(--bg); color: #fff; overflow-x: hidden; }
+        .container { max-width: 450px; margin: 20px auto; padding: 20px; }
+        
+        .card {
+            background: var(--glass); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px; padding: 25px; box-shadow: 0 8px 32px 0 rgba(0,0,0,0.37);
+            text-align: center;
         }
-        .booking-card {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 40px; border-radius: 25px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
-            width: 100%; max-width: 450px; text-align: center;
-            position: relative;
-        }
-        .lang-toggle {
-            position: absolute; top: 20px; left: 20px;
-            background: none; border: 1px solid #6c5ce7; color: #6c5ce7;
-            padding: 5px 10px; border-radius: 15px; cursor: pointer; font-family: 'Cairo';
-        }
-        h2 { color: #6c5ce7; margin-bottom: 30px; }
-        .input-group { margin-bottom: 15px; text-align: right; }
-        label { font-size: 0.9rem; color: #636e72; margin-bottom: 5px; display: block; }
+
+        h2 { color: #a29bfe; margin-bottom: 5px; }
+        p { color: #b2bec3; font-size: 0.9em; margin-bottom: 25px; }
+
+        label { display: block; text-align: right; margin: 10px 0 5px; font-size: 0.9em; color: #dfe6e9; }
         select, input {
-            width: 100%; padding: 12px; border: 2px solid #dfe6e9; border-radius: 12px;
-            font-family: 'Cairo'; font-size: 1rem; box-sizing: border-box; outline: none; transition: 0.3s;
+            width: 100%; padding: 12px; border-radius: 12px; border: none; outline: none;
+            background: rgba(255,255,255,0.1); color: #fff; font-family: 'Cairo'; margin-bottom: 10px;
+            box-sizing: border-box; transition: 0.3s;
         }
-        select:focus, input:focus { border-color: #6c5ce7; }
-        button.submit-btn {
-            width: 100%; padding: 15px; background: #6c5ce7; color: white; border: none;
-            border-radius: 12px; font-size: 1.1rem; font-weight: bold; cursor: pointer;
-            transition: 0.3s; margin-top: 10px;
+        select:focus, input:focus { background: rgba(255,255,255,0.15); box-shadow: 0 0 10px rgba(108, 92, 231, 0.5); }
+        
+        /* تلوين خيارات القائمة */
+        option { background: #2d3436; color: white; }
+
+        .btn {
+            background: linear-gradient(45deg, #6c5ce7, #a29bfe); color: white; border: none;
+            padding: 15px; width: 100%; border-radius: 12px; font-size: 1.1em; font-weight: bold;
+            cursor: pointer; margin-top: 20px; box-shadow: 0 4px 15px rgba(108, 92, 231, 0.4);
+            transition: transform 0.2s;
         }
-        button.submit-btn:hover { background: #5649c0; transform: translateY(-2px); }
+        .btn:active { transform: scale(0.98); }
+
+        .lang-switch {
+            position: absolute; top: 20px; right: 20px; cursor: pointer;
+            background: rgba(255,255,255,0.1); padding: 5px 10px; border-radius: 20px; font-size: 0.8em;
+        }
     </style>
 </head>
 <body>
 
-<div class="booking-card">
-    <button class="lang-toggle" onclick="toggleLang()" id="btnLang">English</button>
-    <h2 id="txtTitle">احجز موعدك</h2>
-    
-    <div class="input-group">
-        <label id="lblService">الخدمة</label>
+<div class="lang-switch" onclick="toggleLang()">EN / AR</div>
+
+<div class="container">
+    <div class="card">
+        <h2 id="title">حجز موعد جديد</h2>
+        <p id="subTitle">يرجى تعبئة البيانات لتأكيد حجزك</p>
+
+        <label id="lblService">اختر الخدمة</label>
         <select id="serviceSelect"></select>
-    </div>
-    
-    <div class="input-group">
-        <label id="lblName">الاسم الكامل</label>
-        <input type="text" id="custName">
-    </div>
 
-    <div class="input-group">
-        <label id="lblPhone">رقم الهاتف</label>
-        <input type="text" id="custPhone" placeholder="961...">
-    </div>
-
-    <div class="input-group">
-        <label id="lblDate">التاريخ</label>
+        <label id="lblDate">تاريخ الحجز</label>
         <input type="date" id="bookDate">
-    </div>
 
-    <div class="input-group">
-        <label id="lblTime">الوقت</label>
+        <label id="lblTime">وقت الحجز</label>
         <input type="time" id="bookTime">
-    </div>
 
-    <button class="submit-btn" onclick="bookNow()" id="btnBook">تأكيد الحجز</button>
+        <label id="lblName">الاسم الكامل</label>
+        <input type="text" id="custName" placeholder="...">
+
+        <label id="lblPhone">رقم الهاتف</label>
+        <input type="tel" id="custPhone" placeholder="70xxxxxx">
+
+        <button class="btn" onclick="bookNow()" id="btnBook">تأكيد الحجز</button>
+    </div>
 </div>
 
 <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const shopSlug = urlParams.get('shop');
     let bId = null;
-    let curLang = 'ar';
     
+    // النصوص للترجمة
+    let curLang = 'ar';
     const txt = {
-        ar: { title: "احجز موعدك", serv: "الخدمة", name: "الاسم الكامل", phone: "رقم الهاتف", date: "التاريخ", time: "الوقت", btn: "تأكيد الحجز", lang: "English", success: "تم الحجز بنجاح!" },
-        en: { title: "Book Appointment", serv: "Service", name: "Full Name", phone: "Phone Number", date: "Date", time: "Time", btn: "Confirm Booking", lang: "العربية", success: "Booking Confirmed!" }
+        ar: { t: "حجز موعد", sub: "احجز موعدك بسهولة", lS: "الخدمة", lD: "التاريخ", lT: "الوقت", lN: "الاسم", lP: "الهاتف", btn: "تأكيد الحجز", success: "تم الحجز بنجاح! 🎉" },
+        en: { t: "Book Appointment", sub: "Easy Online Booking", lS: "Service", lD: "Date", lT: "Time", lN: "Full Name", lP: "Phone", btn: "Confirm Booking", success: "Booking Confirmed! 🎉" }
     };
 
     function toggleLang() {
         curLang = curLang === 'ar' ? 'en' : 'ar';
+        document.body.dir = curLang === 'ar' ? 'rtl' : 'ltr';
+        renderTxt();
+    }
+
+    function renderTxt() {
         const t = txt[curLang];
-        document.dir = curLang === 'ar' ? 'rtl' : 'ltr';
-        document.getElementById('txtTitle').innerText = t.title;
-        document.getElementById('lblService').innerText = t.serv;
-        document.getElementById('lblName').innerText = t.name;
-        document.getElementById('lblPhone').innerText = t.phone;
-        document.getElementById('lblDate').innerText = t.date;
-        document.getElementById('lblTime').innerText = t.time;
+        document.getElementById('title').innerText = t.t;
+        document.getElementById('subTitle').innerText = t.sub;
+        document.getElementById('lblService').innerText = t.lS;
+        document.getElementById('lblDate').innerText = t.lD;
+        document.getElementById('lblTime').innerText = t.lT;
+        document.getElementById('lblName').innerText = t.lN;
+        document.getElementById('lblPhone').innerText = t.lP;
         document.getElementById('btnBook').innerText = t.btn;
-        document.getElementById('btnLang').innerText = t.lang;
-        document.querySelector('.input-group').style.textAlign = curLang === 'ar' ? 'right' : 'left';
     }
 
-    async function loadServices() {
-        const slug = new URLSearchParams(window.location.search).get('shop') || 'ali-salon';
-        const res = await fetch(`/shop/${slug}/services`);
-        const data = await res.json();
-        bId = data.business_id;
-        document.getElementById('txtTitle').innerText += ` - ${data.shop_name}`;
+    // تحميل الخدمات عند الفتح
+    async function loadShop() {
+        if(!shopSlug) { document.body.innerHTML = "<h2 style='text-align:center;color:white;margin-top:50px'>رابط المتجر غير صحيح</h2>"; return; }
         
-        document.getElementById('serviceSelect').innerHTML = data.services.map(s => 
-            `<option value="${s.id}">${s.name} (${s.price}$)</option>`
-        ).join('');
+        try {
+            const res = await fetch(`/shop/${shopSlug}/services`);
+            if(!res.ok) throw new Error();
+            const data = await res.json();
+            bId = data.business_id;
+            document.getElementById('title').innerText += ` - ${data.shop_name}`;
+            
+            const sel = document.getElementById('serviceSelect');
+            sel.innerHTML = data.services.map(s => 
+                `<option value="${s.id}">${s.name} (${s.price}$ - ${s.duration} min)</option>`
+            ).join('');
+        } catch {
+            document.body.innerHTML = "<h2 style='text-align:center;color:white'>المتجر غير موجود</h2>";
+        }
     }
 
+    // دالة الحجز
     async function bookNow() {
         let phone = document.getElementById('custPhone').value.trim();
-        // تصحيح الرقم
-        if(!phone.startsWith('961')) phone = '961' + phone.replace(/^0+/, '');
+        // تنسيق الهاتف
+        if(!phone.startsWith('961') && phone.length === 8) phone = '961' + phone;
+
+        const body = { 
+            business_id: bId, 
+            service_id: document.getElementById('serviceSelect').value, 
+            customer_name: document.getElementById('custName').value, 
+            customer_phone: phone, 
+            booking_date: document.getElementById('bookDate').value, 
+            booking_time: document.getElementById('bookTime').value 
+        };
+
+        if(!body.customer_name || !body.customer_phone || !body.booking_date || !body.booking_time) {
+            alert(curLang==='ar'? "يرجى تعبئة جميع الحقول": "Please fill all fields"); return;
+        }
 
         const res = await fetch('/book-appointment/', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ 
-                business_id: bId, 
-                service_id: document.getElementById('serviceSelect').value, 
-                customer_name: document.getElementById('custName').value, 
-                customer_phone: phone, 
-                booking_date: document.getElementById('bookDate').value, 
-                booking_time: document.getElementById('bookTime').value 
-            })
+            body: JSON.stringify(body)
         });
 
-        if(res.ok) alert(txt[curLang].success);
+        if(res.ok) {
+            alert(txt[curLang].success);
+            location.reload();
+        } else {
+            // 🛑 عرض رسالة الخطأ القادمة من السيرفر (تضارب أو دوام)
+            const err = await res.json();
+            alert("⚠️ " + (err.detail || "Error occurred"));
+        }
     }
 
-    window.onload = loadServices;
+    // إعدادات التاريخ الافتراضي (اليوم)
+    document.getElementById('bookDate').valueAsDate = new Date();
+    loadShop();
 </script>
+
 </body>
 </html>
